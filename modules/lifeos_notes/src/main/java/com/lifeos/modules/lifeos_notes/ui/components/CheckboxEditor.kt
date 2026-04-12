@@ -1,146 +1,223 @@
 package com.lifeos.modules.lifeos_notes.ui.components
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CheckBox
-import androidx.compose.material.icons.filled.CheckBoxOutlineBlank
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.text.AnnotatedString
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.input.TextFieldValue
-import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
+import com.lifeos.modules.lifeos_notes.data.local.ChecklistItem
+import org.json.JSONArray
+import org.json.JSONObject
+import java.util.UUID
 
-private val checkboxRegex = Regex("^(\\s*)-\\s\\[([ xX])\\]\\s(.*)$", RegexOption.MULTILINE)
-
-data class ContentLine(val text: String, val isCheckbox: Boolean, val isChecked: Boolean, val indent: Int)
-
-private fun parseContent(content: String): List<ContentLine> {
-    val lines = mutableListOf<ContentLine>()
-    checkboxRegex.findAll(content).forEach { match ->
-        val indent = match.groupValues[1].length
-        val checked = match.groupValues[2].lowercase() == "x"
-        val text = match.groupValues[3]
-        lines.add(ContentLine(text, true, checked, indent))
+fun parseChecklist(json: String): List<ChecklistItem> {
+    return try {
+        val items = mutableListOf<ChecklistItem>()
+        val array = JSONArray(json)
+        for (i in 0 until array.length()) {
+            val obj = array.getJSONObject(i)
+            items.add(ChecklistItem(
+                id = obj.getString("id"),
+                text = obj.getString("text"),
+                isChecked = obj.getBoolean("isChecked")
+            ))
+        }
+        items
+    } catch (e: Exception) {
+        emptyList()
     }
-    return lines
 }
 
-private fun updateCheckbox(content: String, index: Int, newChecked: Boolean): String {
-    val matches = checkboxRegex.findAll(content).toList()
-    if (index < 0 || index >= matches.size) return content
-    
-    val match = matches[index]
-    val newMark = if (newChecked) "x" else " "
-    val newLine = "${match.groupValues[1]}- [$newMark] ${match.groupValues[3]}"
-    
-    return content.substring(0, match.range.first) + newLine + content.substring(match.range.last + 1)
+fun serializeChecklist(items: List<ChecklistItem>): String {
+    val array = JSONArray()
+    items.forEach { item ->
+        val obj = JSONObject().apply {
+            put("id", item.id)
+            put("text", item.text)
+            put("isChecked", item.isChecked)
+        }
+        array.put(obj)
+    }
+    return array.toString()
 }
 
 @Composable
-fun CheckboxEditor(
-    content: String,
-    onContentChange: (String) -> Unit,
+fun ChecklistEditor(
+    checklistJson: String,
+    onChecklistChange: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    var textFieldValue by remember { mutableStateOf(TextFieldValue(content)) }
-    var showRawText by remember { mutableStateOf(false) }
-    val checkboxes = remember(content) { parseContent(content) }
-    val hasCheckboxes = checkboxes.isNotEmpty()
+    var items by remember(checklistJson) { mutableStateOf(parseChecklist(checklistJson)) }
+    var newItemText by remember { mutableStateOf("") }
 
-    LaunchedEffect(content) {
-        if (textFieldValue.text != content) {
-            textFieldValue = TextFieldValue(content)
-        }
+    LaunchedEffect(checklistJson) {
+        items = parseChecklist(checklistJson)
     }
 
     Column(modifier = modifier.fillMaxSize()) {
-        if (hasCheckboxes) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 8.dp),
-                horizontalArrangement = Arrangement.End
-            ) {
-                TextButton({ showRawText = !showRawText }) {
-                    Text(if (showRawText) "Show Checkboxes" else "Show Raw Text")
-                }
-            }
-        }
-
-        if (showRawText || !hasCheckboxes) {
-            Box(modifier = Modifier.weight(1f)) {
-                BasicTextField(
-                    value = textFieldValue,
-                    onValueChange = { newValue ->
-                        textFieldValue = newValue
-                        onContentChange(newValue.text)
-                    },
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(16.dp),
-                    textStyle = MaterialTheme.typography.bodyLarge.copy(
-                        color = MaterialTheme.colorScheme.onSurface
-                    ),
-                    cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
-                    decorationBox = { innerTextField ->
-                        if (textFieldValue.text.isEmpty()) {
-                            Text(
-                                "Type your note here...\n\nTip: Use - [ ] or - [x] for checkboxes",
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
+        LazyColumn(
+            modifier = Modifier
+                .weight(1f)
+                .padding(horizontal = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+            contentPadding = PaddingValues(vertical = 8.dp)
+        ) {
+            itemsIndexed(items) { index, item ->
+                ChecklistRow(
+                    item = item,
+                    onToggle = {
+                        items = items.toMutableList().apply {
+                            this[index] = item.copy(isChecked = !item.isChecked)
                         }
-                        innerTextField()
+                        onChecklistChange(serializeChecklist(items))
+                    },
+                    onTextChange = { newText ->
+                        items = items.toMutableList().apply {
+                            this[index] = item.copy(text = newText)
+                        }
+                        onChecklistChange(serializeChecklist(items))
+                    },
+                    onDelete = {
+                        items = items.toMutableList().apply {
+                            removeAt(index)
+                        }
+                        onChecklistChange(serializeChecklist(items))
                     }
                 )
             }
-        } else {
-            LazyColumn(
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(horizontal = 16.dp)
-            ) {
-                itemsIndexed(checkboxes) { index, line ->
-                    Row(
+
+            item {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        Icons.Default.Add,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    BasicTextField(
+                        value = newItemText,
+                        onValueChange = { newItemText = it },
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable {
-                                val newContent = updateCheckbox(content, index, !line.isChecked)
-                                textFieldValue = TextFieldValue(newContent)
-                                onContentChange(newContent)
-                            }
+                            .weight(1f)
                             .padding(vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Spacer(modifier = Modifier.width((line.indent * 16).dp))
-                        Icon(
-                            imageVector = if (line.isChecked) Icons.Filled.CheckBox else Icons.Filled.CheckBoxOutlineBlank,
-                            contentDescription = null,
-                            tint = if (line.isChecked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(24.dp)
-                        )
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Text(
-                            text = line.text,
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = if (line.isChecked) 
-                                MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                            else 
-                                MaterialTheme.colorScheme.onSurface
-                        )
+                        textStyle = MaterialTheme.typography.bodyLarge.copy(
+                            color = MaterialTheme.colorScheme.onSurface
+                        ),
+                        cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                        decorationBox = { innerTextField ->
+                            Text(
+                                "Add item...",
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            innerTextField()
+                        },
+                        singleLine = true
+                    )
+                    if (newItemText.isNotEmpty()) {
+                        IconButton({
+                            items = items + ChecklistItem(
+                                id = UUID.randomUUID().toString(),
+                                text = newItemText,
+                                isChecked = false
+                            )
+                            onChecklistChange(serializeChecklist(items))
+                            newItemText = ""
+                        }) {
+                            Icon(Icons.Default.Check, "Add", tint = MaterialTheme.colorScheme.primary)
+                        }
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun ChecklistRow(
+    item: ChecklistItem,
+    onToggle: () -> Unit,
+    onTextChange: (String) -> Unit,
+    onDelete: () -> Unit
+) {
+    var textValue by remember(item.text) { mutableStateOf(TextFieldValue(item.text)) }
+    var isEditing by remember { mutableStateOf(false) }
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(8.dp))
+            .background(
+                if (item.isChecked)
+                    MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                else
+                    MaterialTheme.colorScheme.surfaceVariant
+            )
+            .clickable { onToggle() }
+            .padding(12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Checkbox(
+            checked = item.isChecked,
+            onCheckedChange = { onToggle() }
+        )
+
+        Spacer(modifier = Modifier.width(8.dp))
+
+        if (isEditing) {
+            BasicTextField(
+                value = textValue,
+                onValueChange = { 
+                    textValue = it
+                    onTextChange(it.text)
+                },
+                modifier = Modifier.weight(1f),
+                textStyle = MaterialTheme.typography.bodyLarge.copy(
+                    color = MaterialTheme.colorScheme.onSurface
+                ),
+                cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                singleLine = true
+            )
+        } else {
+            Text(
+                text = item.text,
+                modifier = Modifier.weight(1f),
+                style = MaterialTheme.typography.bodyLarge,
+                color = if (item.isChecked)
+                    MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                else
+                    MaterialTheme.colorScheme.onSurface
+            )
+        }
+
+        IconButton(onClick = onDelete) {
+            Icon(
+                Icons.Default.Close,
+                "Delete",
+                tint = MaterialTheme.colorScheme.error.copy(alpha = 0.7f),
+                modifier = Modifier.size(20.dp)
+            )
         }
     }
 }

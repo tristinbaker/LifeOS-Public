@@ -18,7 +18,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import com.lifeos.modules.lifeos_notes.data.local.NoteEntity
-import com.lifeos.modules.lifeos_notes.ui.components.CheckboxEditor
+import com.lifeos.modules.lifeos_notes.ui.components.ChecklistEditor
 import java.time.Instant
 import java.time.LocalDateTime
 import java.time.ZoneId
@@ -29,18 +29,20 @@ import java.time.format.DateTimeFormatter
 fun NoteEditorScreen(
     note: NoteEntity?,
     onNavigateBack: () -> Unit,
-    onSave: (title: String, content: String, isPinned: Boolean, notificationTime: Long?) -> Unit,
+    onSave: (title: String, content: String, checklistJson: String, isPinned: Boolean, notificationTime: Long?) -> Unit,
     onDelete: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
     var title by remember(note) { mutableStateOf(note?.title ?: "") }
     var content by remember(note) { mutableStateOf(note?.content ?: "") }
+    var checklistJson by remember(note) { mutableStateOf(note?.checklistJson ?: "[]") }
     var isPinned by remember(note) { mutableStateOf(note?.isPinned ?: false) }
     var notificationTime by remember(note) { mutableStateOf(note?.notificationTime) }
     var showDatePicker by remember { mutableStateOf(false) }
     var showTimePicker by remember { mutableStateOf(false) }
     var selectedDateTime by remember { mutableStateOf<LocalDateTime?>(null) }
+    var selectedTab by remember { mutableStateOf(0) }
 
     val notificationPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
@@ -90,13 +92,35 @@ fun NoteEditorScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            CheckboxEditor(
-                content = content,
-                onContentChange = { content = it },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f)
-            )
+            TabRow(selectedTabIndex = selectedTab) {
+                Tab(
+                    selected = selectedTab == 0,
+                    onClick = { selectedTab = 0 },
+                    text = { Text("Checklist") }
+                )
+                Tab(
+                    selected = selectedTab == 1,
+                    onClick = { selectedTab = 1 },
+                    text = { Text("Notes") }
+                )
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            if (selectedTab == 0) {
+                ChecklistEditor(
+                    checklistJson = checklistJson,
+                    onChecklistChange = { checklistJson = it },
+                    modifier = Modifier.fillMaxSize()
+                )
+            } else {
+                OutlinedTextField(
+                    value = content,
+                    onValueChange = { content = it },
+                    modifier = Modifier.fillMaxSize(),
+                    placeholder = { Text("Note content...") }
+                )
+            }
         }
 
         HorizontalDivider()
@@ -142,7 +166,7 @@ fun NoteEditorScreen(
         }
 
         Button(
-            onClick = { onSave(title, content, isPinned, notificationTime); onNavigateBack() },
+            onClick = { onSave(title, content, checklistJson, isPinned, notificationTime); onNavigateBack() },
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp)

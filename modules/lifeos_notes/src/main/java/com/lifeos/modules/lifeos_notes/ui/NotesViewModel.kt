@@ -48,6 +48,7 @@ class NotesViewModel @Inject constructor(
         id: Long?,
         title: String,
         content: String,
+        checklistJson: String,
         isPinned: Boolean,
         notificationTime: Long?,
         context: Context
@@ -59,6 +60,7 @@ class NotesViewModel @Inject constructor(
                 id = id ?: 0,
                 title = title,
                 content = content,
+                checklistJson = checklistJson,
                 isPinned = isPinned,
                 createdAt = if (id != null) repository.getNoteById(id)?.createdAt ?: currentTime else currentTime,
                 updatedAt = currentTime,

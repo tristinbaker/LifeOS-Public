@@ -107,11 +107,12 @@ class NotesModule : LifeOSModule {
                 NoteEditorScreen(
                     note = null,
                     onNavigateBack = { moduleNavController.popBackStack() },
-                    onSave = { title, content, isPinned, notificationTime ->
+                    onSave = { title, content, checklistJson, isPinned, notificationTime ->
                         viewModel.saveNote(
                             id = null,
                             title = title,
                             content = content,
+                            checklistJson = checklistJson,
                             isPinned = isPinned,
                             notificationTime = notificationTime,
                             context = context
@@ -132,11 +133,12 @@ class NotesModule : LifeOSModule {
                 NoteEditorScreen(
                     note = note,
                     onNavigateBack = { moduleNavController.popBackStack() },
-                    onSave = { title, content, isPinned, notificationTime ->
+                    onSave = { title, content, checklistJson, isPinned, notificationTime ->
                         viewModel.saveNote(
                             id = noteId,
                             title = title,
                             content = content,
+                            checklistJson = checklistJson,
                             isPinned = isPinned,
                             notificationTime = notificationTime,
                             context = context
