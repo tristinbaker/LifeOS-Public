@@ -18,6 +18,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import com.lifeos.modules.lifeos_notes.data.local.NoteEntity
+import com.lifeos.modules.lifeos_notes.ui.components.CheckboxEditor
 import java.time.Instant
 import java.time.LocalDateTime
 import java.time.ZoneId
@@ -89,13 +90,12 @@ fun NoteEditorScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            OutlinedTextField(
-                value = content,
-                onValueChange = { content = it },
+            CheckboxEditor(
+                content = content,
+                onContentChange = { content = it },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .weight(1f),
-                placeholder = { Text("Note content...") }
+                    .weight(1f)
             )
         }
 
