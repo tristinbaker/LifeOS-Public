@@ -1,0 +1,2 @@
+adb uninstall com.tristinbaker.lifeos
+adb install app/build/outputs/apk/debug/app-debug.apk

@@ -1,0 +1,27 @@
+1<?xml version="1.0" encoding="utf-8"?>
+2<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+3    package="com.lifeos.modules.lifeos_notes" >
+4
+5    <uses-sdk android:minSdkVersion="33" />
+6
+7    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+7-->/home/tristinb/Programming/Experiments/LifeOS/modules/lifeos_notes/src/main/AndroidManifest.xml:3:5-77
+7-->/home/tristinb/Programming/Experiments/LifeOS/modules/lifeos_notes/src/main/AndroidManifest.xml:3:22-74
+8    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+8-->/home/tristinb/Programming/Experiments/LifeOS/modules/lifeos_notes/src/main/AndroidManifest.xml:4:5-79
+8-->/home/tristinb/Programming/Experiments/LifeOS/modules/lifeos_notes/src/main/AndroidManifest.xml:4:22-76
+9    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
+9-->/home/tristinb/Programming/Experiments/LifeOS/modules/lifeos_notes/src/main/AndroidManifest.xml:5:5-74
+9-->/home/tristinb/Programming/Experiments/LifeOS/modules/lifeos_notes/src/main/AndroidManifest.xml:5:22-71
+10
+11    <application>
+11-->/home/tristinb/Programming/Experiments/LifeOS/modules/lifeos_notes/src/main/AndroidManifest.xml:7:5-11:19
+12        <receiver
+12-->/home/tristinb/Programming/Experiments/LifeOS/modules/lifeos_notes/src/main/AndroidManifest.xml:8:9-10:40
+13            android:name="com.lifeos.modules.lifeos_notes.service.NotesNotificationReceiver"
+13-->/home/tristinb/Programming/Experiments/LifeOS/modules/lifeos_notes/src/main/AndroidManifest.xml:9:13-62
+14            android:exported="false" />
+14-->/home/tristinb/Programming/Experiments/LifeOS/modules/lifeos_notes/src/main/AndroidManifest.xml:10:13-37
+15    </application>
+16
+17</manifest>

@@ -1,0 +1,36 @@
+-- Merging decision tree log ---
+manifest
+ADDED from /home/tristinb/Programming/Experiments/LifeOS/modules/lifeos_notes/src/main/AndroidManifest.xml:2:1-12:12
+INJECTED from /home/tristinb/Programming/Experiments/LifeOS/modules/lifeos_notes/src/main/AndroidManifest.xml:2:1-12:12
+	package
+		INJECTED from /home/tristinb/Programming/Experiments/LifeOS/modules/lifeos_notes/src/main/AndroidManifest.xml
+	xmlns:android
+		ADDED from /home/tristinb/Programming/Experiments/LifeOS/modules/lifeos_notes/src/main/AndroidManifest.xml:2:11-69
+uses-permission#android.permission.POST_NOTIFICATIONS
+ADDED from /home/tristinb/Programming/Experiments/LifeOS/modules/lifeos_notes/src/main/AndroidManifest.xml:3:5-77
+	android:name
+		ADDED from /home/tristinb/Programming/Experiments/LifeOS/modules/lifeos_notes/src/main/AndroidManifest.xml:3:22-74
+uses-permission#android.permission.SCHEDULE_EXACT_ALARM
+ADDED from /home/tristinb/Programming/Experiments/LifeOS/modules/lifeos_notes/src/main/AndroidManifest.xml:4:5-79
+	android:name
+		ADDED from /home/tristinb/Programming/Experiments/LifeOS/modules/lifeos_notes/src/main/AndroidManifest.xml:4:22-76
+uses-permission#android.permission.USE_EXACT_ALARM
+ADDED from /home/tristinb/Programming/Experiments/LifeOS/modules/lifeos_notes/src/main/AndroidManifest.xml:5:5-74
+	android:name
+		ADDED from /home/tristinb/Programming/Experiments/LifeOS/modules/lifeos_notes/src/main/AndroidManifest.xml:5:22-71
+application
+ADDED from /home/tristinb/Programming/Experiments/LifeOS/modules/lifeos_notes/src/main/AndroidManifest.xml:7:5-11:19
+receiver#com.lifeos.modules.lifeos_notes.service.NotesNotificationReceiver
+ADDED from /home/tristinb/Programming/Experiments/LifeOS/modules/lifeos_notes/src/main/AndroidManifest.xml:8:9-10:40
+	android:exported
+		ADDED from /home/tristinb/Programming/Experiments/LifeOS/modules/lifeos_notes/src/main/AndroidManifest.xml:10:13-37
+	android:name
+		ADDED from /home/tristinb/Programming/Experiments/LifeOS/modules/lifeos_notes/src/main/AndroidManifest.xml:9:13-62
+uses-sdk
+INJECTED from /home/tristinb/Programming/Experiments/LifeOS/modules/lifeos_notes/src/main/AndroidManifest.xml reason: use-sdk injection requested
+INJECTED from /home/tristinb/Programming/Experiments/LifeOS/modules/lifeos_notes/src/main/AndroidManifest.xml
+INJECTED from /home/tristinb/Programming/Experiments/LifeOS/modules/lifeos_notes/src/main/AndroidManifest.xml
+	android:targetSdkVersion
+		INJECTED from /home/tristinb/Programming/Experiments/LifeOS/modules/lifeos_notes/src/main/AndroidManifest.xml
+	android:minSdkVersion
+		INJECTED from /home/tristinb/Programming/Experiments/LifeOS/modules/lifeos_notes/src/main/AndroidManifest.xml
