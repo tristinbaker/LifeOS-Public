@@ -39,7 +39,7 @@ class NotesModule : LifeOSModule {
     @Composable
     override fun Content(
         onNavigateBack: () -> Unit,
-        initialNoteId: Long?
+        initialId: Long?
     ) {
         val moduleNavController = rememberNavController()
         val context = LocalContext.current
@@ -50,8 +50,8 @@ class NotesModule : LifeOSModule {
             NotesNotificationHelper.createNotificationChannel(context)
         }
 
-        LaunchedEffect(initialNoteId) {
-            initialNoteId?.let { noteId ->
+        LaunchedEffect(initialId) {
+            initialId?.let { noteId ->
                 moduleNavController.navigate("edit/$noteId")
             }
         }

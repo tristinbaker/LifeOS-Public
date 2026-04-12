@@ -14,6 +14,7 @@ import androidx.navigation.compose.rememberNavController
 import com.lifeos.core.ModuleRegistry
 import com.lifeos.modules.lifeos_mealtracker.MealTrackerModule
 import com.lifeos.modules.lifeos_notes.NotesModule
+import com.lifeos.modules.lifeos_habittracker.HabitsModule
 import com.tristinbaker.lifeos.ui.home.HomeScreen
 import com.tristinbaker.lifeos.ui.theme.LifeOSTheme
 import dagger.hilt.android.AndroidEntryPoint
@@ -25,6 +26,7 @@ class MainActivity : ComponentActivity() {
 
         ModuleRegistry.register(MealTrackerModule())
         ModuleRegistry.register(NotesModule())
+        ModuleRegistry.register(HabitsModule())
 
         val initialModule = intent?.getStringExtra("module")
         val initialNoteId = if (initialModule == "notes") {
@@ -52,9 +54,11 @@ class MainActivity : ComponentActivity() {
 fun LifeOSNavHost(
     navController: androidx.navigation.NavHostController = rememberNavController(),
     startDestination: String = "home",
-    initialNoteId: Long? = null
+    initialNoteId: Long? = null,
+    initialHabitId: Long? = null
 ) {
     var noteIdForNotes by remember { mutableStateOf(initialNoteId) }
+    var habitIdForHabits by remember { mutableStateOf(initialHabitId) }
 
     NavHost(
         navController = navController,
@@ -73,7 +77,7 @@ fun LifeOSNavHost(
             val module = ModuleRegistry.getModule("mealtracker")
             module?.Content(
                 onNavigateBack = { navController.popBackStack() },
-                initialNoteId = null
+                initialId = null
             )
         }
 
@@ -81,10 +85,21 @@ fun LifeOSNavHost(
             val module = ModuleRegistry.getModule("notes")
             module?.Content(
                 onNavigateBack = { navController.popBackStack() },
-                initialNoteId = noteIdForNotes
+                initialId = noteIdForNotes
             )
             LaunchedEffect(Unit) {
                 noteIdForNotes = null
+            }
+        }
+
+        composable("habits") {
+            val module = ModuleRegistry.getModule("habits")
+            module?.Content(
+                onNavigateBack = { navController.popBackStack() },
+                initialId = habitIdForHabits
+            )
+            LaunchedEffect(Unit) {
+                habitIdForHabits = null
             }
         }
     }

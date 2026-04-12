@@ -53,7 +53,7 @@ class MealTrackerModule : LifeOSModule {
     @Composable
     override fun Content(
         onNavigateBack: () -> Unit,
-        initialNoteId: Long?
+        initialId: Long?
     ) {
         val moduleNavController = rememberNavController()
         val settingsViewModel: SettingsViewModel = hiltViewModel()

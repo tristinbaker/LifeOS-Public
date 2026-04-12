@@ -13,7 +13,7 @@ interface LifeOSModule {
     @Composable
     fun Content(
         onNavigateBack: () -> Unit,
-        initialNoteId: Long?
+        initialId: Long?
     )
 }
 
