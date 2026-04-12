@@ -1,7 +1,5 @@
 package com.lifeos.modules.lifeos_notes.ui.notes
 
-import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -10,6 +8,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.lifeos.modules.lifeos_notes.data.local.NoteEntity
@@ -32,10 +31,7 @@ fun NotesListScreen(
                 onClick = onCreateNote,
                 containerColor = MaterialTheme.colorScheme.primary
             ) {
-                Icon(
-                    imageVector = Icons.Default.Add,
-                    contentDescription = "Create Note"
-                )
+                Icon(Icons.Default.Add, "Create Note")
             }
         },
         modifier = modifier
@@ -45,38 +41,26 @@ fun NotesListScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(paddingValues),
-                contentAlignment = androidx.compose.ui.Alignment.Center
+                contentAlignment = Alignment.Center
             ) {
-                Column(
-                    horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally
-                ) {
-                    Text(
-                        text = "No notes yet",
-                        style = MaterialTheme.typography.headlineSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = "Tap + to create your first note",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
-                    )
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text("No notes yet", style = MaterialTheme.typography.headlineSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Spacer(Modifier.height(8.dp))
+                    Text("Tap + to create your first note", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f))
                 }
             }
         } else {
             LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues),
+                modifier = Modifier.fillMaxSize().padding(paddingValues),
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 items(notes, key = { it.id }) { note ->
-                    NoteCardWithDelete(
+                    SwipeableNoteItem(
                         note = note,
                         onClick = { onNoteClick(note.id) },
                         onPinClick = { onPinNote(note) },
-                        onLongClick = { noteToDelete = note }
+                        onDelete = { noteToDelete = note }
                     )
                 }
             }
@@ -87,48 +71,41 @@ fun NotesListScreen(
         AlertDialog(
             onDismissRequest = { noteToDelete = null },
             title = { Text("Delete Note") },
-            text = { Text("Are you sure you want to delete \"${note.title.ifEmpty { "Untitled" }}\"?") },
+            text = { Text("Delete \"${note.title.ifEmpty { "Untitled" }}\"?") },
             confirmButton = {
-                TextButton(
-                    onClick = {
-                        onDeleteNote(note)
-                        noteToDelete = null
-                    }
-                ) {
+                TextButton({ onDeleteNote(note); noteToDelete = null }) {
                     Text("Delete", color = MaterialTheme.colorScheme.error)
                 }
             },
             dismissButton = {
-                TextButton(onClick = { noteToDelete = null }) {
-                    Text("Cancel")
-                }
+                TextButton({ noteToDelete = null }) { Text("Cancel") }
             }
         )
     }
 }
 
-@OptIn(ExperimentalFoundationApi::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun NoteCardWithDelete(
+private fun SwipeableNoteItem(
     note: NoteEntity,
     onClick: () -> Unit,
     onPinClick: () -> Unit,
-    onLongClick: () -> Unit
+    onDelete: () -> Unit
 ) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    val state = rememberSwipeToDismissBoxState(
+        confirmValueChange = { if (it == SwipeToDismissBoxValue.EndToStart) { onDelete(); false } else false }
+    )
+
+    SwipeToDismissBox(
+        state = state,
+        backgroundContent = {
+            Box(Modifier.fillMaxSize().padding(horizontal = 16.dp), contentAlignment = Alignment.CenterEnd) {
+                Icon(Icons.Default.Delete, "Delete", tint = MaterialTheme.colorScheme.error)
+            }
+        },
+        enableDismissFromStartToEnd = false,
+        modifier = Modifier.fillMaxWidth()
     ) {
-        NoteCard(
-            note = note,
-            onClick = onClick,
-            onPinClick = onPinClick,
-            modifier = Modifier
-                .weight(1f)
-                .combinedClickable(
-                    onClick = onClick,
-                    onLongClick = onLongClick
-                )
-        )
+        NoteCard(note = note, onClick = onClick, onPinClick = onPinClick)
     }
 }
