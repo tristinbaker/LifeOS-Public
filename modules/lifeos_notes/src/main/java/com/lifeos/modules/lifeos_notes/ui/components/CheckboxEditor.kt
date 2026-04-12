@@ -1,6 +1,5 @@
 package com.lifeos.modules.lifeos_notes.ui.components
 
-import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -8,9 +7,9 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -18,6 +17,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import com.lifeos.modules.lifeos_notes.data.local.ChecklistItem
@@ -80,6 +80,7 @@ fun ChecklistEditor(
             itemsIndexed(items) { index, item ->
                 ChecklistRow(
                     item = item,
+                    isLastItem = index == items.size - 1,
                     onToggle = {
                         items = items.toMutableList().apply {
                             this[index] = item.copy(isChecked = !item.isChecked)
@@ -96,6 +97,14 @@ fun ChecklistEditor(
                         items = items.toMutableList().apply {
                             removeAt(index)
                         }
+                        onChecklistChange(serializeChecklist(items))
+                    },
+                    onDone = {
+                        items = items + ChecklistItem(
+                            id = UUID.randomUUID().toString(),
+                            text = "",
+                            isChecked = false
+                        )
                         onChecklistChange(serializeChecklist(items))
                     }
                 )
@@ -126,28 +135,33 @@ fun ChecklistEditor(
                         ),
                         cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
                         decorationBox = { innerTextField ->
-                            Text(
-                                "Add item...",
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            innerTextField()
+                            Box {
+                                innerTextField()
+                                if (newItemText.isEmpty()) {
+                                    Text(
+                                        "Add item...",
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
                         },
-                        singleLine = true
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                        keyboardActions = androidx.compose.foundation.text.KeyboardActions(
+                            onDone = {
+                                if (newItemText.isNotEmpty()) {
+                                    items = items + ChecklistItem(
+                                        id = UUID.randomUUID().toString(),
+                                        text = newItemText,
+                                        isChecked = false
+                                    )
+                                    onChecklistChange(serializeChecklist(items))
+                                    newItemText = ""
+                                }
+                            }
+                        )
                     )
-                    if (newItemText.isNotEmpty()) {
-                        IconButton({
-                            items = items + ChecklistItem(
-                                id = UUID.randomUUID().toString(),
-                                text = newItemText,
-                                isChecked = false
-                            )
-                            onChecklistChange(serializeChecklist(items))
-                            newItemText = ""
-                        }) {
-                            Icon(Icons.Default.Check, "Add", tint = MaterialTheme.colorScheme.primary)
-                        }
-                    }
                 }
             }
         }
@@ -157,12 +171,17 @@ fun ChecklistEditor(
 @Composable
 private fun ChecklistRow(
     item: ChecklistItem,
+    isLastItem: Boolean,
     onToggle: () -> Unit,
     onTextChange: (String) -> Unit,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    onDone: () -> Unit
 ) {
-    var textValue by remember(item.text) { mutableStateOf(TextFieldValue(item.text)) }
-    var isEditing by remember { mutableStateOf(false) }
+    var textValue by remember(item.id) { mutableStateOf(TextFieldValue(item.text)) }
+
+    LaunchedEffect(item.text) {
+        textValue = TextFieldValue(item.text)
+    }
 
     Row(
         modifier = Modifier
@@ -185,29 +204,39 @@ private fun ChecklistRow(
 
         Spacer(modifier = Modifier.width(8.dp))
 
-        if (isEditing) {
+        Box(modifier = Modifier.weight(1f)) {
             BasicTextField(
                 value = textValue,
                 onValueChange = { 
                     textValue = it
                     onTextChange(it.text)
                 },
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.fillMaxWidth(),
                 textStyle = MaterialTheme.typography.bodyLarge.copy(
-                    color = MaterialTheme.colorScheme.onSurface
+                    color = if (item.isChecked)
+                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                    else
+                        MaterialTheme.colorScheme.onSurface
                 ),
                 cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
-                singleLine = true
-            )
-        } else {
-            Text(
-                text = item.text,
-                modifier = Modifier.weight(1f),
-                style = MaterialTheme.typography.bodyLarge,
-                color = if (item.isChecked)
-                    MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
-                else
-                    MaterialTheme.colorScheme.onSurface
+                decorationBox = { innerTextField ->
+                    Box {
+                        innerTextField()
+                        if (textValue.text.isEmpty()) {
+                            Text(
+                                "Type here...",
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                },
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(imeAction = if (isLastItem) ImeAction.Done else ImeAction.Next),
+                keyboardActions = androidx.compose.foundation.text.KeyboardActions(
+                    onNext = { onDone() },
+                    onDone = { onDone() }
+                )
             )
         }
 
