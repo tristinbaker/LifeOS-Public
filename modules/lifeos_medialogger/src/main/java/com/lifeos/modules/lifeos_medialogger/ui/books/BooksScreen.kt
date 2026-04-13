@@ -1,6 +1,7 @@
 package com.lifeos.modules.lifeos_medialogger.ui.books
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -11,6 +12,10 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.material3.*
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -40,6 +45,8 @@ fun BooksScreen(
     onAddVolume: (Long) -> Unit,
     onEditVolume: (Long) -> Unit
 ) {
+    var collapsedYears by rememberSaveable { mutableStateOf(emptySet<String>()) }
+
     // Get series completion date: explicit series date takes priority, fallback to latest volume date
     val seriesWithDate = mangaSeries.map { series ->
         val seriesDate = series.dateCompleted
@@ -122,37 +129,55 @@ fun BooksScreen(
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             sortedItemsByYear.forEach { (year, items) ->
+                val isCollapsed = year in collapsedYears
                 item(key = "year_$year") {
-                    Text(
-                        year,
-                        style = MaterialTheme.typography.titleMedium,
-                        modifier = Modifier.padding(vertical = 8.dp)
-                    )
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                collapsedYears = if (isCollapsed)
+                                    collapsedYears - year
+                                else
+                                    collapsedYears + year
+                            }
+                            .padding(vertical = 8.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(year, style = MaterialTheme.typography.titleMedium)
+                        Icon(
+                            imageVector = if (isCollapsed) Icons.Default.ExpandMore else Icons.Default.ExpandLess,
+                            contentDescription = if (isCollapsed) "Expand" else "Collapse",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
 
-                items.forEach { item ->
-                    when (item) {
-                        is BookItem -> {
-                            item(key = item.book.id) {
-                                MediaItemCard(
-                                    item = item.book,
-                                    onClick = { onBookClick(item.book.id) }
-                                )
+                if (!isCollapsed) {
+                    items.forEach { item ->
+                        when (item) {
+                            is BookItem -> {
+                                item(key = item.book.id) {
+                                    MediaItemCard(
+                                        item = item.book,
+                                        onClick = { onBookClick(item.book.id) }
+                                    )
+                                }
                             }
-                        }
-                        is SeriesItem -> {
-                            item(key = "series_${item.series.id}") {
-                                MangaSeriesCard(
-                                    series = item.series,
-                                    isExpanded = item.series.id in expandedSeriesIds,
-                                    onSeriesClick = { onSeriesClick(item.series.id) },
-                                    onEditSeries = { onEditSeries(item.series.id) },
-                                    onAddVolume = { onAddVolume(item.series.id) },
-                                    onEditVolume = onEditVolume
-                                )
+                            is SeriesItem -> {
+                                item(key = "series_${item.series.id}") {
+                                    MangaSeriesCard(
+                                        series = item.series,
+                                        isExpanded = item.series.id in expandedSeriesIds,
+                                        onSeriesClick = { onSeriesClick(item.series.id) },
+                                        onEditSeries = { onEditSeries(item.series.id) },
+                                        onAddVolume = { onAddVolume(item.series.id) },
+                                        onEditVolume = onEditVolume
+                                    )
+                                }
                             }
+                            else -> {}
                         }
-                        else -> {}
                     }
                 }
             }

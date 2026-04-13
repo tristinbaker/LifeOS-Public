@@ -60,12 +60,14 @@ fun MediaLoggerContent(
 
     var pendingCoverUrl by remember { mutableStateOf<String?>(null) }
     var pendingTitle by remember { mutableStateOf<String?>(null) }
+    var pendingVolumeNumber by remember { mutableStateOf<String?>(null) }
     var imageSearchQuery by remember { mutableStateOf("") }
     var screenBeforeSearch by remember { mutableStateOf("main") }
 
     fun goToMain() {
         pendingCoverUrl = null
         pendingTitle = null
+        pendingVolumeNumber = null
         currentScreen = "main"
     }
 
@@ -284,7 +286,15 @@ fun MediaLoggerContent(
                     AddVolumeScreen(
                         seriesName = series?.title ?: "",
                         selectedCoverUrl = pendingCoverUrl,
-                        onSearchCover = { q -> goToImageSearch(q.ifBlank { "manga volume cover" }, "add_volume") },
+                        selectedVolumeNumber = pendingVolumeNumber,
+                        onSearchCover = { q ->
+                            // Query is "$seriesName vol $volNum" — capture the number so it
+                            // survives the navigation to image search and back
+                            pendingVolumeNumber = q.substringAfterLast(" vol ")
+                                .trim()
+                                .takeIf { it.isNotEmpty() && it.all(Char::isDigit) }
+                            goToImageSearch(q.ifBlank { "manga volume cover" }, "add_volume")
+                        },
                         onNavigateBack = { goToMain() },
                         onSave = { volumeNumber, rating, date, coverUrl, notes ->
                             viewModel.addMangaVolume(seriesId, volumeNumber, rating, date, coverUrl, notes)
@@ -336,6 +346,7 @@ private fun AddVolumeScreen(
     existingCoverLocalPath: String = "",
     existingNotes: String = "",
     selectedCoverUrl: String? = null,
+    selectedVolumeNumber: String? = null,
     onSearchCover: ((String) -> Unit)? = null,
     onNavigateBack: () -> Unit,
     onNavigateBackWithDelete: (() -> Unit)? = null,
@@ -353,6 +364,12 @@ private fun AddVolumeScreen(
         if (selectedCoverUrl != null) {
             coverUrl = selectedCoverUrl
             coverLocalPath = ""
+        }
+    }
+
+    LaunchedEffect(selectedVolumeNumber) {
+        if (selectedVolumeNumber != null) {
+            volumeNumber = selectedVolumeNumber
         }
     }
 
