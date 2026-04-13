@@ -23,9 +23,19 @@ android {
         }
     }
 
+    signingConfigs {
+        create("release") {
+            storeFile = file("${System.getenv("HOME")}/.android/defide-release.jks")
+            storePassword = System.getenv("DEFIDE_STORE_PASSWORD")
+            keyAlias = "defide"
+            keyPassword = System.getenv("DEFIDE_KEY_PASSWORD")
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
+            signingConfig = signingConfigs.getByName("release")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -79,6 +89,8 @@ dependencies {
     ksp("androidx.room:room-compiler:2.6.1")
 
     implementation("androidx.datastore:datastore-preferences:1.0.0")
+    implementation("androidx.work:work-runtime-ktx:2.9.0")
+    implementation("androidx.documentfile:documentfile:1.0.1")
 
     implementation(project(":modules:lifeos_core"))
     implementation(project(":modules:lifeos_mealtracker"))
