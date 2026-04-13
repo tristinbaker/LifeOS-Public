@@ -16,7 +16,7 @@ class Converters {
 @Database(
     entities = [HabitEntity::class, HabitCheckIn::class],
     version = 1,
-    exportSchema = false
+    exportSchema = true
 )
 @TypeConverters(Converters::class)
 abstract class HabitsDatabase : RoomDatabase() {
