@@ -16,6 +16,8 @@ import com.lifeos.modules.lifeos_mealtracker.MealTrackerModule
 import com.lifeos.modules.lifeos_notes.NotesModule
 import com.lifeos.modules.lifeos_habittracker.HabitsModule
 import com.lifeos.modules.lifeos_medialogger.MediaLoggerModule
+import com.lifeos.modules.lifeos_sleeptracker.SleepModule
+import com.lifeos.modules.lifeos_journal.JournalModule
 import com.tristinbaker.lifeos.ui.home.HomeScreen
 import com.tristinbaker.lifeos.ui.theme.LifeOSTheme
 import dagger.hilt.android.AndroidEntryPoint
@@ -29,6 +31,8 @@ class MainActivity : ComponentActivity() {
         ModuleRegistry.register(NotesModule())
         ModuleRegistry.register(HabitsModule())
         ModuleRegistry.register(MediaLoggerModule())
+        ModuleRegistry.register(SleepModule())
+        ModuleRegistry.register(JournalModule())
 
         val initialModule = intent?.getStringExtra("module")
         val initialNoteId = if (initialModule == "notes") {
@@ -107,6 +111,22 @@ fun LifeOSNavHost(
 
         composable("medialogger") {
             val module = ModuleRegistry.getModule("medialogger")
+            module?.Content(
+                onNavigateBack = { navController.popBackStack() },
+                initialId = null
+            )
+        }
+
+        composable("sleep") {
+            val module = ModuleRegistry.getModule("sleep")
+            module?.Content(
+                onNavigateBack = { navController.popBackStack() },
+                initialId = null
+            )
+        }
+
+        composable("journal") {
+            val module = ModuleRegistry.getModule("journal")
             module?.Content(
                 onNavigateBack = { navController.popBackStack() },
                 initialId = null
