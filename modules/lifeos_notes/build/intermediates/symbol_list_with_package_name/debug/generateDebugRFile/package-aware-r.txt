@@ -1,2 +1,0 @@
-com.lifeos.modules.lifeos_notes
-string app_name

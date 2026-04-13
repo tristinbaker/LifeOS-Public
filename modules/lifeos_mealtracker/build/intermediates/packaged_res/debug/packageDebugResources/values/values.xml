@@ -1,5 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <string name="app_name">Brutal Meal Tracker</string>
-    <style name="Theme.BrutalMealTracker" parent="android:Theme.Material.NoActionBar"/>
-</resources>
