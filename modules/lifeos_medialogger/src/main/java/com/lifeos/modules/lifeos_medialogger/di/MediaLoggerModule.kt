@@ -1,0 +1,35 @@
+package com.lifeos.modules.lifeos_medialogger.di
+
+import android.content.Context
+import androidx.room.Room
+import com.lifeos.modules.lifeos_medialogger.data.local.*
+import dagger.Module
+import dagger.Provides
+import dagger.hilt.InstallIn
+import dagger.hilt.android.qualifiers.ApplicationContext
+import dagger.hilt.components.SingletonComponent
+import javax.inject.Singleton
+
+@Module
+@InstallIn(SingletonComponent::class)
+object MediaLoggerModule {
+
+    @Provides
+    @Singleton
+    fun provideDatabase(@ApplicationContext context: Context): MediaLoggerDatabase {
+        return Room.databaseBuilder(
+            context,
+            MediaLoggerDatabase::class.java,
+            "medialogger.db"
+        ).addMigrations(MIGRATION_2_3).build()
+    }
+
+    @Provides
+    fun provideMediaItemDao(database: MediaLoggerDatabase): MediaItemDao = database.mediaItemDao()
+
+    @Provides
+    fun provideMangaSeriesDao(database: MediaLoggerDatabase): MangaSeriesDao = database.mangaSeriesDao()
+
+    @Provides
+    fun provideMangaVolumeDao(database: MediaLoggerDatabase): MangaVolumeDao = database.mangaVolumeDao()
+}

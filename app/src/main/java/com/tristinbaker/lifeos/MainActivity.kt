@@ -15,6 +15,7 @@ import com.lifeos.core.ModuleRegistry
 import com.lifeos.modules.lifeos_mealtracker.MealTrackerModule
 import com.lifeos.modules.lifeos_notes.NotesModule
 import com.lifeos.modules.lifeos_habittracker.HabitsModule
+import com.lifeos.modules.lifeos_medialogger.MediaLoggerModule
 import com.tristinbaker.lifeos.ui.home.HomeScreen
 import com.tristinbaker.lifeos.ui.theme.LifeOSTheme
 import dagger.hilt.android.AndroidEntryPoint
@@ -27,6 +28,7 @@ class MainActivity : ComponentActivity() {
         ModuleRegistry.register(MealTrackerModule())
         ModuleRegistry.register(NotesModule())
         ModuleRegistry.register(HabitsModule())
+        ModuleRegistry.register(MediaLoggerModule())
 
         val initialModule = intent?.getStringExtra("module")
         val initialNoteId = if (initialModule == "notes") {
@@ -101,6 +103,14 @@ fun LifeOSNavHost(
             LaunchedEffect(Unit) {
                 habitIdForHabits = null
             }
+        }
+
+        composable("medialogger") {
+            val module = ModuleRegistry.getModule("medialogger")
+            module?.Content(
+                onNavigateBack = { navController.popBackStack() },
+                initialId = null
+            )
         }
     }
 }

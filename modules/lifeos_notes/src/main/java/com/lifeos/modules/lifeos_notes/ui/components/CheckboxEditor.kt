@@ -146,7 +146,7 @@ fun ChecklistEditor(
                                 }
                             }
                         },
-                        singleLine = true,
+                        singleLine = false,
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                         keyboardActions = androidx.compose.foundation.text.KeyboardActions(
                             onDone = {
@@ -231,7 +231,7 @@ private fun ChecklistRow(
                         }
                     }
                 },
-                singleLine = true,
+                singleLine = false,
                 keyboardOptions = KeyboardOptions(imeAction = if (isLastItem) ImeAction.Done else ImeAction.Next),
                 keyboardActions = androidx.compose.foundation.text.KeyboardActions(
                     onNext = { onDone() },
