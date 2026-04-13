@@ -35,13 +35,19 @@ val MIGRATION_2_3 = object : Migration(2, 3) {
     }
 }
 
+val MIGRATION_3_4 = object : Migration(3, 4) {
+    override fun migrate(database: SupportSQLiteDatabase) {
+        database.execSQL("ALTER TABLE manga_series ADD COLUMN dateCompleted INTEGER")
+    }
+}
+
 @Database(
     entities = [
         MediaItemEntity::class,
         MangaSeriesEntity::class,
         MangaVolumeEntity::class
     ],
-    version = 3,
+    version = 4,
     exportSchema = true
 )
 @TypeConverters(Converters::class)

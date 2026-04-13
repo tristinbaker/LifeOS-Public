@@ -227,7 +227,7 @@ fun AddBookScreen(
             onDismissRequest = { showDatePicker = false },
             confirmButton = {
                 TextButton(onClick = {
-                    selectedDate = datePickerState.selectedDateMillis
+                    selectedDate = datePickerState.selectedDateMillis?.let { it + (24 * 60 * 60 * 1000) }
                     showDatePicker = false
                 }) {
                     Text("OK")

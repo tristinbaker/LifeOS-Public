@@ -76,6 +76,7 @@ class MediaLoggerViewModel @Inject constructor(
                             coverUrl = series.coverUrl,
                             coverLocalPath = series.coverLocalPath,
                             author = series.author,
+                            dateCompleted = series.dateCompleted,
                             volumes = allVolumes
                                 .filter { it.seriesId == series.id }
                                 .map { it.toMangaVolume() },
@@ -171,19 +172,20 @@ class MediaLoggerViewModel @Inject constructor(
         }
     }
 
-    fun addMangaSeries(title: String, coverUrl: String?, author: String?) {
+    fun addMangaSeries(title: String, coverUrl: String?, author: String?, dateCompleted: Long?) {
         viewModelScope.launch {
             val localPath = coverUrl?.let { imageCacheService.downloadAndCacheImage(it) }
             repository.insertMangaSeries(MangaSeriesEntity(
                 title = title,
                 coverUrl = coverUrl,
                 coverLocalPath = localPath,
-                author = author
+                author = author,
+                dateCompleted = dateCompleted
             ))
         }
     }
 
-    fun updateMangaSeries(id: Long, title: String, coverUrl: String?, author: String?) {
+    fun updateMangaSeries(id: Long, title: String, coverUrl: String?, author: String?, dateCompleted: Long?) {
         viewModelScope.launch {
             val existing = repository.getMangaSeriesById(id) ?: return@launch
             var localPath = existing.coverLocalPath
@@ -197,7 +199,8 @@ class MediaLoggerViewModel @Inject constructor(
                 title = title,
                 coverUrl = coverUrl,
                 coverLocalPath = localPath,
-                author = author
+                author = author,
+                dateCompleted = dateCompleted
             ))
         }
     }

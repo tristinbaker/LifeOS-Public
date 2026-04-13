@@ -183,7 +183,7 @@ fun NoteEditorScreen(
             confirmButton = {
                 TextButton({
                     datePickerState.selectedDateMillis?.let { millis ->
-                        selectedDateTime = LocalDateTime.ofInstant(Instant.ofEpochMilli(millis), ZoneId.systemDefault()).withHour(9).withMinute(0)
+                        selectedDateTime = LocalDateTime.ofInstant(Instant.ofEpochMilli(millis + (24 * 60 * 60 * 1000)), ZoneId.systemDefault()).withHour(9).withMinute(0)
                     }
                     showDatePicker = false
                     showTimePicker = true

@@ -252,8 +252,8 @@ fun MediaLoggerContent(
                     selectedTitle = pendingTitle,
                     onSearchCover = { q -> goToImageSearch(if (q.isBlank()) "cover" else "$q cover", "add_series") },
                     onNavigateBack = { goToMain() },
-                    onSave = { title, coverUrl, _, _, _, _, author ->
-                        viewModel.addMangaSeries(title, coverUrl, author)
+                    onSave = { title, coverUrl, _, date, _, _, author ->
+                        viewModel.addMangaSeries(title, coverUrl, author, date)
                         goToMain()
                     }
                 )
@@ -267,12 +267,13 @@ fun MediaLoggerContent(
                         existingCoverUrl = series?.coverUrl ?: "",
                         existingCoverLocalPath = series?.coverLocalPath ?: "",
                         existingAuthor = series?.author ?: "",
+                        existingDate = series?.dateCompleted,
                         selectedCoverUrl = pendingCoverUrl,
                         onSearchCover = { q -> goToImageSearch(q.ifBlank { "manga cover" }, "edit_series") },
                         onNavigateBack = { goToMain() },
                         onNavigateBackWithDelete = { viewModel.deleteMangaSeries(id); goToMain() },
-                        onSave = { title, coverUrl, _, _, _, _, author ->
-                            viewModel.updateMangaSeries(id, title, coverUrl, author)
+                        onSave = { title, coverUrl, _, date, _, _, author ->
+                            viewModel.updateMangaSeries(id, title, coverUrl, author, date)
                             goToMain()
                         }
                     )
@@ -475,7 +476,7 @@ private fun AddVolumeScreen(
             onDismissRequest = { showDatePicker = false },
             confirmButton = {
                 TextButton(onClick = {
-                    selectedDate = datePickerState.selectedDateMillis
+                    selectedDate = datePickerState.selectedDateMillis?.let { it + (24 * 60 * 60 * 1000) }
                     showDatePicker = false
                 }) { Text("OK") }
             },

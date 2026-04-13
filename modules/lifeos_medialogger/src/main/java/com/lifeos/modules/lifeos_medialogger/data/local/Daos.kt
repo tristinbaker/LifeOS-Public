@@ -26,7 +26,7 @@ interface MediaItemDao {
 
 @Dao
 interface MangaSeriesDao {
-    @Query("SELECT * FROM manga_series ORDER BY title ASC")
+    @Query("SELECT * FROM manga_series ORDER BY createdAt DESC")
     fun getAllSeries(): Flow<List<MangaSeriesEntity>>
 
     @Query("SELECT * FROM manga_series WHERE id = :id")

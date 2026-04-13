@@ -244,6 +244,7 @@ fun SleepEditorScreen(
                 TextButton({
                     datePickerState.selectedDateMillis?.let { millis ->
                         date = LocalDate.ofEpochDay(millis / (24 * 60 * 60 * 1000))
+                            .plusDays(1)
                             .format(DateTimeFormatter.ISO_LOCAL_DATE)
                     }
                     showDatePicker = false

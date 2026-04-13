@@ -295,6 +295,7 @@ fun AddMealScreen(
                         datePickerState.selectedDateMillis?.let { millis ->
                             viewModel.updateDate(
                                 LocalDate.ofEpochDay(millis / (24 * 60 * 60 * 1000))
+                                    .plusDays(1)
                             )
                         }
                         showDatePicker = false

@@ -14,6 +14,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import java.time.Instant
 import java.time.LocalDate
+import java.time.ZoneOffset
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.format.TextStyle
@@ -159,6 +160,7 @@ fun JournalEditorScreen(
                 TextButton({
                     datePickerState.selectedDateMillis?.let { millis ->
                         date = LocalDate.ofEpochDay(millis / (24 * 60 * 60 * 1000))
+                            .plusDays(1)
                             .format(DateTimeFormatter.ISO_LOCAL_DATE)
                     }
                     showDatePicker = false

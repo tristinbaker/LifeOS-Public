@@ -40,11 +40,46 @@ fun BooksScreen(
     onAddVolume: (Long) -> Unit,
     onEditVolume: (Long) -> Unit
 ) {
-    val booksByYear = books.groupBy { item ->
-        item.dateCompleted?.let {
-            SimpleDateFormat("yyyy", Locale.getDefault()).format(Date(it))
-        } ?: "Unknown"
+    // Get series completion date: explicit series date takes priority, fallback to latest volume date
+    val seriesWithDate = mangaSeries.map { series ->
+        val seriesDate = series.dateCompleted
+            ?: series.volumes.mapNotNull { it.dateCompleted }.maxOrNull()
+        val seriesRating = series.volumes
+            .mapNotNull { it.rating }
+            .average()
+            .takeIf { !it.isNaN() }
+            ?.toFloat()
+        Triple(series, seriesDate, seriesRating)
+    }
+
+    // Group books and series by year
+    val itemsByYear: Map<String, List<Any>> = buildMap {
+        books.forEach { book ->
+            val year = book.dateCompleted?.let {
+                SimpleDateFormat("yyyy", Locale.getDefault()).format(Date(it))
+            } ?: "Unknown"
+            @Suppress("UNCHECKED_CAST")
+            (getOrPut(year) { mutableListOf<Any>() } as MutableList<Any>).add(BookItem(book))
+        }
+        seriesWithDate.forEach { (series, seriesDate, seriesRating) ->
+            val year = seriesDate?.let {
+                SimpleDateFormat("yyyy", Locale.getDefault()).format(Date(it))
+            } ?: "Unknown"
+            @Suppress("UNCHECKED_CAST")
+            (getOrPut(year) { mutableListOf<Any>() } as MutableList<Any>).add(SeriesItem(series, seriesDate, seriesRating))
+        }
     }.toSortedMap(compareByDescending { it })
+
+    // Sort items within each year by date (newest first)
+    val sortedItemsByYear = itemsByYear.mapValues { (_, items) ->
+        items.sortedByDescending { item ->
+            when (item) {
+                is BookItem -> item.book.dateCompleted ?: 0L
+                is SeriesItem -> item.date ?: 0L
+                else -> 0L
+            }
+        }
+    }
 
     Scaffold(
         floatingActionButton = {
@@ -86,50 +121,38 @@ fun BooksScreen(
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            if (mangaSeries.isNotEmpty()) {
-                item {
+            sortedItemsByYear.forEach { (year, items) ->
+                item(key = "year_$year") {
                     Text(
-                        "Manga / Comics",
+                        year,
                         style = MaterialTheme.typography.titleMedium,
                         modifier = Modifier.padding(vertical = 8.dp)
                     )
                 }
 
-                mangaSeries.forEach { series ->
-                    item(key = "series_${series.id}") {
-                        MangaSeriesCard(
-                            series = series,
-                            isExpanded = series.id in expandedSeriesIds,
-                            onClick = { onSeriesClick(series.id) },
-                            onEditSeries = { onEditSeries(series.id) },
-                            onAddVolume = { onAddVolume(series.id) },
-                            onEditVolume = onEditVolume
-                        )
-                    }
-                }
-
-                item {
-                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-                }
-            }
-
-            if (booksByYear.isNotEmpty()) {
-                booksByYear.forEach { (year, items) ->
-                    item(key = "year_$year") {
-                        Text(
-                            year,
-                            style = MaterialTheme.typography.titleMedium,
-                            modifier = Modifier.padding(vertical = 8.dp)
-                        )
-                    }
-
-                    items.forEach { book ->
-                        item(key = book.id) {
-                            MediaItemCard(
-                                item = book,
-                                onClick = { onBookClick(book.id) }
-                            )
+                items.forEach { item ->
+                    when (item) {
+                        is BookItem -> {
+                            item(key = item.book.id) {
+                                MediaItemCard(
+                                    item = item.book,
+                                    onClick = { onBookClick(item.book.id) }
+                                )
+                            }
                         }
+                        is SeriesItem -> {
+                            item(key = "series_${item.series.id}") {
+                                MangaSeriesCard(
+                                    series = item.series,
+                                    isExpanded = item.series.id in expandedSeriesIds,
+                                    onSeriesClick = { onSeriesClick(item.series.id) },
+                                    onEditSeries = { onEditSeries(item.series.id) },
+                                    onAddVolume = { onAddVolume(item.series.id) },
+                                    onEditVolume = onEditVolume
+                                )
+                            }
+                        }
+                        else -> {}
                     }
                 }
             }
@@ -152,11 +175,18 @@ fun BooksScreen(
     }
 }
 
+private data class BookItem(val book: com.lifeos.modules.lifeos_medialogger.domain.model.MediaItem)
+private data class SeriesItem(
+    val series: MangaSeries,
+    val date: Long?,
+    val rating: Float?
+)
+
 @Composable
 fun MangaSeriesCard(
     series: MangaSeries,
     isExpanded: Boolean,
-    onClick: () -> Unit,
+    onSeriesClick: () -> Unit,
     onEditSeries: () -> Unit,
     onAddVolume: () -> Unit,
     onEditVolume: (Long) -> Unit
@@ -166,7 +196,7 @@ fun MangaSeriesCard(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick)
+            .clickable(onClick = onSeriesClick)
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
             Row(

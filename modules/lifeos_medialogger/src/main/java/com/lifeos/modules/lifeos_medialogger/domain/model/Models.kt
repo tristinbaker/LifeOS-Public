@@ -22,6 +22,7 @@ data class MangaSeries(
     val coverUrl: String? = null,
     val coverLocalPath: String? = null,
     val author: String? = null,
+    val dateCompleted: Long? = null,
     val volumes: List<MangaVolume> = emptyList(),
     val createdAt: Long = System.currentTimeMillis()
 )

@@ -35,6 +35,7 @@ data class MangaSeriesEntity(
     val coverUrl: String? = null,
     val coverLocalPath: String? = null,
     val author: String? = null,
+    val dateCompleted: Long? = null,
     val createdAt: Long = System.currentTimeMillis()
 )
 
