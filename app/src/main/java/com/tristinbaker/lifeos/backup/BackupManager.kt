@@ -30,6 +30,9 @@ object BackupManager {
     private val DB_SUFFIXES = listOf("", "-shm", "-wal")
 
     private const val COVERS_DIR = "media_covers"
+    private const val DATASTORE_DIR = "datastore"
+    // DataStore files to include in the backup (by filename without path)
+    private val DATASTORE_FILES = listOf("settings.preferences_pb")
 
     private const val AUTO_BACKUP_WORK_NAME = "lifeos_auto_backup"
     private const val AUTO_BACKUP_FILE_PREFIX = "lifeos_backup_auto"
@@ -48,6 +51,7 @@ object BackupManager {
                 ZipOutputStream(BufferedOutputStream(raw)).use { zip ->
                     writeDbFilesToZip(dbDir, zip)
                     writeCoversToZip(context, zip)
+                    writeDataStoreToZip(context, zip)
                     fileCount = DB_NAMES.sumOf { name ->
                         DB_SUFFIXES.count { suffix ->
                             File(dbDir, "$name.db$suffix").let { it.exists() && it.length() > 0 }
@@ -85,6 +89,7 @@ object BackupManager {
                 ZipOutputStream(BufferedOutputStream(raw)).use { zip ->
                     writeDbFilesToZip(dbDir, zip)
                     writeCoversToZip(context, zip)
+                    writeDataStoreToZip(context, zip)
                     fileCount = DB_NAMES.sumOf { name ->
                         DB_SUFFIXES.count { suffix ->
                             File(dbDir, "$name.db$suffix").let { it.exists() && it.length() > 0 }
@@ -116,6 +121,19 @@ object BackupManager {
         coversDir.listFiles()?.forEach { file ->
             if (file.isFile && file.length() > 0) {
                 zip.putNextEntry(ZipEntry("$COVERS_DIR/${file.name}"))
+                file.inputStream().use { it.copyTo(zip) }
+                zip.closeEntry()
+            }
+        }
+    }
+
+    private fun writeDataStoreToZip(context: Context, zip: ZipOutputStream) {
+        val dsDir = File(context.filesDir, DATASTORE_DIR)
+        if (!dsDir.exists()) return
+        DATASTORE_FILES.forEach { fileName ->
+            val file = File(dsDir, fileName)
+            if (file.exists() && file.length() > 0) {
+                zip.putNextEntry(ZipEntry("$DATASTORE_DIR/$fileName"))
                 file.inputStream().use { it.copyTo(zip) }
                 zip.closeEntry()
             }

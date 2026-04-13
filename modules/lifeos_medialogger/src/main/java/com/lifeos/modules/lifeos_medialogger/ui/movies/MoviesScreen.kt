@@ -24,13 +24,28 @@ fun MoviesScreen(
     onMovieClick: (Long) -> Unit,
     onAddMovie: () -> Unit
 ) {
-    val moviesByYear = movies.groupBy { movie ->
-        movie.dateCompleted?.let {
-            SimpleDateFormat("yyyy", Locale.getDefault()).format(Date(it))
-        } ?: "Unknown"
+    // year -> monthKey ("2026-04") -> movies, sorted newest first within each month
+    val moviesByYearMonth: Map<String, Map<String, List<MediaItem>>> = buildMap {
+        movies.forEach { movie ->
+            val year = movie.dateCompleted?.let {
+                SimpleDateFormat("yyyy", Locale.getDefault()).format(Date(it))
+            } ?: "Unknown"
+            val monthKey = movie.dateCompleted?.let {
+                SimpleDateFormat("yyyy-MM", Locale.getDefault()).format(Date(it))
+            } ?: "Unknown-00"
+            @Suppress("UNCHECKED_CAST")
+            val yearMap = getOrPut(year) { mutableMapOf<String, MutableList<MediaItem>>() }
+                    as MutableMap<String, MutableList<MediaItem>>
+            yearMap.getOrPut(monthKey) { mutableListOf() }.add(movie)
+        }
+    }.mapValues { (_, monthMap) ->
+        monthMap.mapValues { (_, items) ->
+            items.sortedByDescending { it.dateCompleted ?: 0L }
+        }.toSortedMap(compareByDescending { it })
     }.toSortedMap(compareByDescending { it })
 
     var collapsedYears by rememberSaveable { mutableStateOf(emptySet<String>()) }
+    var collapsedMonths by rememberSaveable { mutableStateOf(emptySet<String>()) }
 
     Scaffold(
         floatingActionButton = {
@@ -46,15 +61,16 @@ fun MoviesScreen(
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            if (moviesByYear.isNotEmpty()) {
-                moviesByYear.forEach { (year, items) ->
-                    val isCollapsed = year in collapsedYears
+            if (moviesByYearMonth.isNotEmpty()) {
+                moviesByYearMonth.forEach { (year, monthMap) ->
+                    val yearCount = monthMap.values.sumOf { it.size }
+                    val isYearCollapsed = year in collapsedYears
                     item(key = "year_$year") {
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clickable {
-                                    collapsedYears = if (isCollapsed)
+                                    collapsedYears = if (isYearCollapsed)
                                         collapsedYears - year
                                     else
                                         collapsedYears + year
@@ -63,22 +79,63 @@ fun MoviesScreen(
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text(year, style = MaterialTheme.typography.titleMedium)
+                            Text(
+                                "$year ($yearCount ${if (yearCount == 1) "Movie" else "Movies"})",
+                                style = MaterialTheme.typography.titleMedium
+                            )
                             Icon(
-                                imageVector = if (isCollapsed) Icons.Default.ExpandMore else Icons.Default.ExpandLess,
-                                contentDescription = if (isCollapsed) "Expand" else "Collapse",
+                                imageVector = if (isYearCollapsed) Icons.Default.ExpandMore else Icons.Default.ExpandLess,
+                                contentDescription = if (isYearCollapsed) "Expand" else "Collapse",
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                     }
 
-                    if (!isCollapsed) {
-                        items.forEach { movie ->
-                            item(key = movie.id) {
-                                MediaItemCard(
-                                    item = movie,
-                                    onClick = { onMovieClick(movie.id) }
-                                )
+                    if (!isYearCollapsed) {
+                        monthMap.forEach { (monthKey, items) ->
+                            val monthCollapseKey = "$year-$monthKey"
+                            val isMonthCollapsed = monthCollapseKey in collapsedMonths
+                            val monthLabel = if (monthKey == "Unknown-00") "Unknown" else
+                                SimpleDateFormat("MMMM", Locale.getDefault())
+                                    .format(SimpleDateFormat("yyyy-MM", Locale.getDefault()).parse(monthKey)!!)
+                            val monthCount = items.size
+                            item(key = "month_$monthCollapseKey") {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable {
+                                            collapsedMonths = if (isMonthCollapsed)
+                                                collapsedMonths - monthCollapseKey
+                                            else
+                                                collapsedMonths + monthCollapseKey
+                                        }
+                                        .padding(start = 16.dp, top = 4.dp, bottom = 4.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        "$monthLabel ($monthCount ${if (monthCount == 1) "Movie" else "Movies"})",
+                                        style = MaterialTheme.typography.titleSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    Icon(
+                                        imageVector = if (isMonthCollapsed) Icons.Default.ExpandMore else Icons.Default.ExpandLess,
+                                        contentDescription = if (isMonthCollapsed) "Expand" else "Collapse",
+                                        modifier = Modifier.size(16.dp),
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+
+                            if (!isMonthCollapsed) {
+                                items.forEach { movie ->
+                                    item(key = movie.id) {
+                                        MediaItemCard(
+                                            item = movie,
+                                            onClick = { onMovieClick(movie.id) }
+                                        )
+                                    }
+                                }
                             }
                         }
                     }

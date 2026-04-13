@@ -1,7 +1,6 @@
 package com.lifeos.modules.lifeos_mealtracker.ui.settings
 
 import android.Manifest
-import android.content.Context
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
@@ -33,27 +32,6 @@ import coil.compose.AsyncImage
 import com.lifeos.modules.lifeos_mealtracker.data.repository.defaultMotivationalMessages
 import com.lifeos.modules.lifeos_mealtracker.data.repository.defaultShameMessages
 import com.lifeos.modules.lifeos_mealtracker.data.repository.UserSettings
-import kotlinx.coroutines.launch
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.Json
-import java.io.File
-
-@Serializable
-data class ExportData(
-    val dailyCalorieGoal: Int,
-    val goalWeight: Double?,
-    val weeklyWeightGoalRate: Double,
-    val targetProtein: Int?,
-    val targetCarbs: Int?,
-    val targetFat: Int?,
-    val shameMessages: List<String>,
-    val motivationalMessages: List<String>,
-    val motivationalMode: Boolean,
-    val currentStreak: Int,
-    val hourlyShameNotifications: Boolean
-)
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
@@ -74,18 +52,6 @@ fun SettingsScreen(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
         viewModel.updateShamePhotoUri(uri)
-    }
-
-    val exportLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.CreateDocument("application/json")
-    ) { uri ->
-        uri?.let { exportData(context, it, settings) }
-    }
-
-    val importLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.GetContent()
-    ) { uri ->
-        uri?.let { importData(context, it, viewModel) }
     }
 
     LazyColumn(
@@ -306,20 +272,6 @@ fun SettingsScreen(
             }
         }
 
-        item {
-            SettingsSection(title = "Data") {
-                SettingsItem(
-                    title = "Export Data",
-                    subtitle = "Save your settings and messages to a file",
-                    onClick = { exportLauncher.launch("brutal_meal_tracker_backup.json") }
-                )
-                SettingsItem(
-                    title = "Import Data",
-                    subtitle = "Restore from a backup file",
-                    onClick = { importLauncher.launch("application/json") }
-                )
-            }
-        }
     }
 
     if (showCalorieGoalDialog) {
@@ -807,46 +759,3 @@ fun MotivationalMessagesDialog(
     )
 }
 
-private fun exportData(context: Context, uri: Uri, settings: UserSettings) {
-    try {
-        val exportData = ExportData(
-            dailyCalorieGoal = settings.dailyCalorieGoal,
-            goalWeight = settings.goalWeight,
-            weeklyWeightGoalRate = settings.weeklyWeightGoalRate,
-            targetProtein = settings.targetProtein,
-            targetCarbs = settings.targetCarbs,
-            targetFat = settings.targetFat,
-            shameMessages = settings.shameMessages,
-            motivationalMessages = settings.motivationalMessages,
-            motivationalMode = settings.motivationalMode,
-            currentStreak = settings.currentStreak,
-            hourlyShameNotifications = settings.hourlyShameNotifications
-        )
-        val json = Json.encodeToString(exportData)
-        context.contentResolver.openOutputStream(uri)?.use { it.write(json.toByteArray()) }
-    } catch (e: Exception) {
-        e.printStackTrace()
-    }
-}
-
-private fun importData(context: Context, uri: Uri, viewModel: SettingsViewModel) {
-    try {
-        val json = context.contentResolver.openInputStream(uri)?.use { it.bufferedReader().readText() }
-        json?.let {
-            val data = Json.decodeFromString<ExportData>(it)
-            kotlinx.coroutines.MainScope().launch {
-                viewModel.updateDailyCalorieGoal(data.dailyCalorieGoal)
-                viewModel.updateGoalWeight(data.goalWeight)
-                viewModel.updateWeeklyWeightGoalRate(data.weeklyWeightGoalRate)
-                viewModel.updateMacroGoals(data.targetProtein, data.targetCarbs, data.targetFat)
-                viewModel.updateShameMessages(data.shameMessages)
-                viewModel.updateMotivationalMessages(data.motivationalMessages)
-                viewModel.updateMotivationalMode(data.motivationalMode)
-                viewModel.updateStreak(data.currentStreak)
-                viewModel.updateHourlyShameNotifications(data.hourlyShameNotifications)
-            }
-        }
-    } catch (e: Exception) {
-        e.printStackTrace()
-    }
-}

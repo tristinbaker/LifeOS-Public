@@ -15,6 +15,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import com.lifeos.modules.lifeos_notes.data.local.NoteEntity
@@ -34,8 +35,20 @@ fun NoteEditorScreen(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
-    var title by remember(note) { mutableStateOf(note?.title ?: "") }
-    var content by remember(note) { mutableStateOf(note?.content ?: "") }
+    var title by remember(note?.id) { mutableStateOf(TextFieldValue(note?.title ?: "")) }
+    var content by remember(note?.id) { mutableStateOf(TextFieldValue(note?.content ?: "")) }
+
+    // Sync external content changes without clobbering cursor position
+    LaunchedEffect(note?.title) {
+        if (note?.title != null && note.title != title.text) {
+            title = TextFieldValue(note.title)
+        }
+    }
+    LaunchedEffect(note?.content) {
+        if (note?.content != null && note.content != content.text) {
+            content = TextFieldValue(note.content)
+        }
+    }
     var checklistJson by remember(note) { mutableStateOf(note?.checklistJson ?: "[]") }
     var isPinned by remember(note) { mutableStateOf(note?.isPinned ?: false) }
     var notificationTime by remember(note) { mutableStateOf(note?.notificationTime) }
@@ -56,6 +69,7 @@ fun NoteEditorScreen(
         modifier = modifier
             .fillMaxSize()
             .navigationBarsPadding()
+            .imePadding()
     ) {
         TopAppBar(
             title = { Text(if (note == null) "New Note" else "Edit Note") },
@@ -166,7 +180,7 @@ fun NoteEditorScreen(
         }
 
         Button(
-            onClick = { onSave(title, content, checklistJson, isPinned, notificationTime); onNavigateBack() },
+            onClick = { onSave(title.text, content.text, checklistJson, isPinned, notificationTime); onNavigateBack() },
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp)

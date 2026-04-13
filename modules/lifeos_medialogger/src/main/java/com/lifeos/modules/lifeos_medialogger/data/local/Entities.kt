@@ -24,6 +24,7 @@ data class MediaItemEntity(
     val type: MediaType,
     val platform: String? = null,
     val author: String? = null,
+    val isRewatch: Boolean = false,
     val createdAt: Long = System.currentTimeMillis()
 )
 

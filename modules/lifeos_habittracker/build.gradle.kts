@@ -80,6 +80,8 @@ dependencies {
 
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.2")
 
+    implementation("androidx.work:work-runtime-ktx:2.9.0")
+
     implementation(project(":modules:lifeos_core"))
 
     debugImplementation("androidx.compose.ui:ui-tooling")

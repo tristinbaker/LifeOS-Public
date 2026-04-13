@@ -43,6 +43,7 @@ fun HabitEditorScreen(
         timesPerWeek: Int,
         reminderEnabled: Boolean,
         reminderTime: Long?,
+        reminderDays: String,
         onComplete: () -> Unit
     ) -> Unit,
     onDelete: () -> Unit,
@@ -57,6 +58,7 @@ fun HabitEditorScreen(
     var timesPerWeek by remember(habit) { mutableStateOf(habit?.timesPerWeek ?: 3) }
     var reminderEnabled by remember(habit) { mutableStateOf(habit?.reminderEnabled ?: false) }
     var reminderTime by remember(habit) { mutableStateOf(habit?.reminderTime) }
+    var reminderDays by remember(habit) { mutableStateOf(habit?.reminderDays ?: "") }
     
     var showDatePicker by remember { mutableStateOf(false) }
     var showTimePicker by remember { mutableStateOf(false) }
@@ -215,7 +217,7 @@ fun HabitEditorScreen(
                 Spacer(modifier = Modifier.width(12.dp))
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        "Daily reminder",
+                        "Reminder",
                         style = MaterialTheme.typography.bodyLarge
                     )
                     if (reminderEnabled && reminderTime != null) {
@@ -270,6 +272,17 @@ fun HabitEditorScreen(
                         Text("Set time")
                     }
                 }
+
+                Spacer(modifier = Modifier.height(8.dp))
+                Text("Notify on days", style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Spacer(modifier = Modifier.height(4.dp))
+                DaySelector(
+                    selectedDays = reminderDays.split(",").mapNotNull { it.trim().toIntOrNull() }.toSet(),
+                    onDaysChanged = { days ->
+                        reminderDays = days.sorted().joinToString(",")
+                    }
+                )
             }
         }
 
@@ -283,6 +296,7 @@ fun HabitEditorScreen(
                     timesPerWeek,
                     reminderEnabled,
                     reminderTime,
+                    reminderDays,
                     onNavigateBack
                 )
             },

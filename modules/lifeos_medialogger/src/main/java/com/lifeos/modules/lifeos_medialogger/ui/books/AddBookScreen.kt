@@ -9,6 +9,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
@@ -32,12 +33,13 @@ fun AddBookScreen(
     isMovie: Boolean = false,
     isGame: Boolean = false,
     isSeries: Boolean = false,
+    existingIsRewatch: Boolean = false,
     selectedCoverUrl: String? = null,
     selectedTitle: String? = null,
     onSearchCover: ((currentTitle: String) -> Unit)? = null,
     onNavigateBack: () -> Unit,
     onNavigateBackWithDelete: (() -> Unit)? = null,
-    onSave: (title: String, coverUrl: String?, rating: Float?, dateCompleted: Long?, notes: String?, platform: String?, author: String?) -> Unit
+    onSave: (title: String, coverUrl: String?, rating: Float?, dateCompleted: Long?, notes: String?, platform: String?, author: String?, isRewatch: Boolean) -> Unit
 ) {
     var title by remember { mutableStateOf(existingTitle) }
     var coverUrl by remember { mutableStateOf(existingCoverUrl) }
@@ -47,6 +49,7 @@ fun AddBookScreen(
     var selectedRating by remember { mutableStateOf<Float?>(existingRating) }
     var notes by remember { mutableStateOf(existingNotes) }
     var selectedDate by remember { mutableStateOf(existingDate) }
+    var isRewatch by remember { mutableStateOf(existingIsRewatch) }
     var showDatePicker by remember { mutableStateOf(false) }
 
     LaunchedEffect(selectedCoverUrl) {
@@ -197,6 +200,18 @@ fun AddBookScreen(
             minLines = 3
         )
 
+        if (isMovie || isGame) {
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(if (isGame) "Replay?" else "Rewatch?", style = MaterialTheme.typography.bodyLarge)
+                Checkbox(checked = isRewatch, onCheckedChange = { isRewatch = it })
+            }
+        }
+
         Spacer(modifier = Modifier.height(16.dp))
 
         Button(
@@ -208,7 +223,8 @@ fun AddBookScreen(
                     selectedDate,
                     notes.ifBlank { null },
                     platform.ifBlank { null },
-                    author.ifBlank { null }
+                    author.ifBlank { null },
+                    isRewatch
                 )
             },
             enabled = title.isNotBlank(),

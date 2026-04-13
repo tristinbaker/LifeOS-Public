@@ -113,7 +113,8 @@ class MediaLoggerViewModel @Inject constructor(
         notes: String?,
         type: MediaType,
         platform: String? = null,
-        author: String? = null
+        author: String? = null,
+        isRewatch: Boolean = false
     ) {
         viewModelScope.launch {
             val localPath = coverUrl?.let { imageCacheService.downloadAndCacheImage(it) }
@@ -126,7 +127,8 @@ class MediaLoggerViewModel @Inject constructor(
                 notes = notes,
                 type = type,
                 platform = platform,
-                author = author
+                author = author,
+                isRewatch = isRewatch
             )
             repository.insertMediaItem(item)
         }
@@ -140,7 +142,8 @@ class MediaLoggerViewModel @Inject constructor(
         dateCompleted: Long?,
         notes: String?,
         platform: String? = null,
-        author: String? = null
+        author: String? = null,
+        isRewatch: Boolean = false
     ) {
         viewModelScope.launch {
             val existing = repository.getMediaItemById(id) ?: return@launch
@@ -159,7 +162,8 @@ class MediaLoggerViewModel @Inject constructor(
                 dateCompleted = dateCompleted,
                 notes = notes,
                 platform = platform,
-                author = author
+                author = author,
+                isRewatch = isRewatch
             ))
         }
     }
@@ -283,6 +287,7 @@ private fun MediaItemEntity.toMediaItem() = MediaItem(
     type = type,
     platform = platform,
     author = author,
+    isRewatch = isRewatch,
     createdAt = createdAt
 )
 

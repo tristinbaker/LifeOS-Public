@@ -3,7 +3,9 @@ package com.lifeos.modules.lifeos_habittracker.di
 import android.content.Context
 import androidx.room.Room
 import com.lifeos.modules.lifeos_habittracker.data.local.HabitDao
+import com.lifeos.modules.lifeos_habittracker.data.local.HABITS_MIGRATION_1_2
 import com.lifeos.modules.lifeos_habittracker.data.local.HabitsDatabase
+import com.lifeos.modules.lifeos_habittracker.notification.HabitReminderScheduler
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -21,12 +23,18 @@ object HabitsModule {
             context,
             HabitsDatabase::class.java,
             "lifeos_habittracker.db"
-        ).build()
+        ).addMigrations(HABITS_MIGRATION_1_2).build()
     }
 
     @Provides
     @Singleton
     fun provideHabitDao(database: HabitsDatabase): HabitDao {
         return database.habitDao()
+    }
+
+    @Provides
+    @Singleton
+    fun provideHabitReminderScheduler(@ApplicationContext context: Context): HabitReminderScheduler {
+        return HabitReminderScheduler(context)
     }
 }

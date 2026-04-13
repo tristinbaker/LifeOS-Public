@@ -25,6 +25,7 @@ object RestoreManager {
                 ?: error("Cannot open backup file")
 
             val coversDir = File(context.filesDir, "media_covers")
+            val dataStoreDir = File(context.filesDir, "datastore")
 
             inputStream.use { raw ->
                 ZipInputStream(raw.buffered()).use { zip ->
@@ -32,14 +33,21 @@ object RestoreManager {
                     while (entry != null) {
                         if (!entry.isDirectory) {
                             val entryName = entry.name
-                            val destFile = if (entryName.startsWith("media_covers/")) {
-                                coversDir.mkdirs()
-                                File(coversDir, File(entryName).name)
-                            } else {
-                                // DB files: strip any directory component and place in dbDir
-                                val name = File(entryName).name
-                                if (name.isEmpty()) { zip.closeEntry(); entry = zip.nextEntry; continue }
-                                File(dbDir, name)
+                            val destFile = when {
+                                entryName.startsWith("media_covers/") -> {
+                                    coversDir.mkdirs()
+                                    File(coversDir, File(entryName).name)
+                                }
+                                entryName.startsWith("datastore/") -> {
+                                    dataStoreDir.mkdirs()
+                                    File(dataStoreDir, File(entryName).name)
+                                }
+                                else -> {
+                                    // DB files: strip any directory component and place in dbDir
+                                    val name = File(entryName).name
+                                    if (name.isEmpty()) { zip.closeEntry(); entry = zip.nextEntry; continue }
+                                    File(dbDir, name)
+                                }
                             }
                             destFile.outputStream().use { out -> zip.copyTo(out) }
                         }

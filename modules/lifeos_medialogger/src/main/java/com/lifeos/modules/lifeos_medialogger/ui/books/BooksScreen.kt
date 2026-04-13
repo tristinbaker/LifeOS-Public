@@ -46,8 +46,9 @@ fun BooksScreen(
     onEditVolume: (Long) -> Unit
 ) {
     var collapsedYears by rememberSaveable { mutableStateOf(emptySet<String>()) }
+    var collapsedMonths by rememberSaveable { mutableStateOf(emptySet<String>()) }
 
-    // Get series completion date: explicit series date takes priority, fallback to latest volume date
+    // Resolve series completion date and average rating
     val seriesWithDate = mangaSeries.map { series ->
         val seriesDate = series.dateCompleted
             ?: series.volumes.mapNotNull { it.dateCompleted }.maxOrNull()
@@ -59,34 +60,43 @@ fun BooksScreen(
         Triple(series, seriesDate, seriesRating)
     }
 
-    // Group books and series by year
-    val itemsByYear: Map<String, List<Any>> = buildMap {
+    // Build year -> monthKey -> items map
+    val itemsByYearMonth: Map<String, Map<String, List<Any>>> = buildMap {
         books.forEach { book ->
             val year = book.dateCompleted?.let {
                 SimpleDateFormat("yyyy", Locale.getDefault()).format(Date(it))
             } ?: "Unknown"
+            val monthKey = book.dateCompleted?.let {
+                SimpleDateFormat("yyyy-MM", Locale.getDefault()).format(Date(it))
+            } ?: "Unknown-00"
             @Suppress("UNCHECKED_CAST")
-            (getOrPut(year) { mutableListOf<Any>() } as MutableList<Any>).add(BookItem(book))
+            val yearMap = getOrPut(year) { mutableMapOf<String, MutableList<Any>>() }
+                    as MutableMap<String, MutableList<Any>>
+            yearMap.getOrPut(monthKey) { mutableListOf() }.add(BookItem(book))
         }
         seriesWithDate.forEach { (series, seriesDate, seriesRating) ->
             val year = seriesDate?.let {
                 SimpleDateFormat("yyyy", Locale.getDefault()).format(Date(it))
             } ?: "Unknown"
+            val monthKey = seriesDate?.let {
+                SimpleDateFormat("yyyy-MM", Locale.getDefault()).format(Date(it))
+            } ?: "Unknown-00"
             @Suppress("UNCHECKED_CAST")
-            (getOrPut(year) { mutableListOf<Any>() } as MutableList<Any>).add(SeriesItem(series, seriesDate, seriesRating))
+            val yearMap = getOrPut(year) { mutableMapOf<String, MutableList<Any>>() }
+                    as MutableMap<String, MutableList<Any>>
+            yearMap.getOrPut(monthKey) { mutableListOf() }.add(SeriesItem(series, seriesDate, seriesRating))
         }
-    }.toSortedMap(compareByDescending { it })
-
-    // Sort items within each year by date (newest first)
-    val sortedItemsByYear = itemsByYear.mapValues { (_, items) ->
-        items.sortedByDescending { item ->
-            when (item) {
-                is BookItem -> item.book.dateCompleted ?: 0L
-                is SeriesItem -> item.date ?: 0L
-                else -> 0L
+    }.mapValues { (_, monthMap) ->
+        monthMap.mapValues { (_, items) ->
+            items.sortedByDescending { item ->
+                when (item) {
+                    is BookItem -> item.book.dateCompleted ?: 0L
+                    is SeriesItem -> item.date ?: 0L
+                    else -> 0L
+                }
             }
-        }
-    }
+        }.toSortedMap(compareByDescending { it })
+    }.toSortedMap(compareByDescending { it })
 
     Scaffold(
         floatingActionButton = {
@@ -128,14 +138,15 @@ fun BooksScreen(
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            sortedItemsByYear.forEach { (year, items) ->
-                val isCollapsed = year in collapsedYears
+            itemsByYearMonth.forEach { (year, monthMap) ->
+                val yearCount = monthMap.values.sumOf { it.size }
+                val isYearCollapsed = year in collapsedYears
                 item(key = "year_$year") {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clickable {
-                                collapsedYears = if (isCollapsed)
+                                collapsedYears = if (isYearCollapsed)
                                     collapsedYears - year
                                 else
                                     collapsedYears + year
@@ -144,39 +155,80 @@ fun BooksScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(year, style = MaterialTheme.typography.titleMedium)
+                        Text(
+                            "$year ($yearCount ${if (yearCount == 1) "Book" else "Books"})",
+                            style = MaterialTheme.typography.titleMedium
+                        )
                         Icon(
-                            imageVector = if (isCollapsed) Icons.Default.ExpandMore else Icons.Default.ExpandLess,
-                            contentDescription = if (isCollapsed) "Expand" else "Collapse",
+                            imageVector = if (isYearCollapsed) Icons.Default.ExpandMore else Icons.Default.ExpandLess,
+                            contentDescription = if (isYearCollapsed) "Expand" else "Collapse",
                             tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
 
-                if (!isCollapsed) {
-                    items.forEach { item ->
-                        when (item) {
-                            is BookItem -> {
-                                item(key = item.book.id) {
-                                    MediaItemCard(
-                                        item = item.book,
-                                        onClick = { onBookClick(item.book.id) }
-                                    )
+                if (!isYearCollapsed) {
+                    monthMap.forEach { (monthKey, items) ->
+                        val monthCollapseKey = "$year-$monthKey"
+                        val isMonthCollapsed = monthCollapseKey in collapsedMonths
+                        val monthLabel = if (monthKey == "Unknown-00") "Unknown" else
+                            SimpleDateFormat("MMMM", Locale.getDefault())
+                                .format(SimpleDateFormat("yyyy-MM", Locale.getDefault()).parse(monthKey)!!)
+                        val monthCount = items.size
+                        item(key = "month_$monthCollapseKey") {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        collapsedMonths = if (isMonthCollapsed)
+                                            collapsedMonths - monthCollapseKey
+                                        else
+                                            collapsedMonths + monthCollapseKey
+                                    }
+                                    .padding(start = 16.dp, top = 4.dp, bottom = 4.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    "$monthLabel ($monthCount ${if (monthCount == 1) "Book" else "Books"})",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Icon(
+                                    imageVector = if (isMonthCollapsed) Icons.Default.ExpandMore else Icons.Default.ExpandLess,
+                                    contentDescription = if (isMonthCollapsed) "Expand" else "Collapse",
+                                    modifier = Modifier.size(16.dp),
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+
+                        if (!isMonthCollapsed) {
+                            items.forEach { item ->
+                                when (item) {
+                                    is BookItem -> {
+                                        item(key = item.book.id) {
+                                            MediaItemCard(
+                                                item = item.book,
+                                                onClick = { onBookClick(item.book.id) }
+                                            )
+                                        }
+                                    }
+                                    is SeriesItem -> {
+                                        item(key = "series_${item.series.id}") {
+                                            MangaSeriesCard(
+                                                series = item.series,
+                                                isExpanded = item.series.id in expandedSeriesIds,
+                                                onSeriesClick = { onSeriesClick(item.series.id) },
+                                                onEditSeries = { onEditSeries(item.series.id) },
+                                                onAddVolume = { onAddVolume(item.series.id) },
+                                                onEditVolume = onEditVolume
+                                            )
+                                        }
+                                    }
+                                    else -> {}
                                 }
                             }
-                            is SeriesItem -> {
-                                item(key = "series_${item.series.id}") {
-                                    MangaSeriesCard(
-                                        series = item.series,
-                                        isExpanded = item.series.id in expandedSeriesIds,
-                                        onSeriesClick = { onSeriesClick(item.series.id) },
-                                        onEditSeries = { onEditSeries(item.series.id) },
-                                        onAddVolume = { onAddVolume(item.series.id) },
-                                        onEditVolume = onEditVolume
-                                    )
-                                }
-                            }
-                            else -> {}
                         }
                     }
                 }

@@ -1,7 +1,10 @@
 package com.lifeos.modules.lifeos_medialogger
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -47,7 +50,7 @@ class MediaLoggerModule : LifeOSModule {
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun MediaLoggerContent(
     state: MediaLoggerState,
@@ -93,10 +96,27 @@ fun MediaLoggerContent(
                 )
             }
 
-            TabRow(selectedTabIndex = state.selectedTab.ordinal, modifier = Modifier.fillMaxWidth()) {
+            val pagerState = rememberPagerState(
+                initialPage = state.selectedTab.ordinal,
+                pageCount = { MediaTab.entries.size }
+            )
+
+            LaunchedEffect(state.selectedTab) {
+                if (pagerState.currentPage != state.selectedTab.ordinal) {
+                    pagerState.animateScrollToPage(state.selectedTab.ordinal)
+                }
+            }
+
+            LaunchedEffect(pagerState.currentPage, pagerState.isScrollInProgress) {
+                if (!pagerState.isScrollInProgress) {
+                    viewModel.selectTab(MediaTab.entries[pagerState.currentPage])
+                }
+            }
+
+            TabRow(selectedTabIndex = pagerState.currentPage, modifier = Modifier.fillMaxWidth()) {
                 MediaTab.entries.forEach { tab ->
                     Tab(
-                        selected = state.selectedTab == tab,
+                        selected = pagerState.currentPage == tab.ordinal,
                         onClick = { viewModel.selectTab(tab) },
                         text = {
                             Text(when (tab) {
@@ -109,29 +129,34 @@ fun MediaLoggerContent(
                 }
             }
 
-            when (state.selectedTab) {
-                MediaTab.BOOKS -> BooksScreen(
-                    books = state.books,
-                    mangaSeries = state.mangaSeries,
-                    expandedSeriesIds = state.expandedSeriesIds,
-                    onBookClick = { id -> pendingCoverUrl = null; editItemId = id; currentScreen = "edit_book" },
-                    onAddBook = { pendingCoverUrl = null; currentScreen = "add_book" },
-                    onAddSeries = { pendingCoverUrl = null; currentScreen = "add_series" },
-                    onSeriesClick = { viewModel.toggleSeriesExpanded(it) },
-                    onEditSeries = { id -> pendingCoverUrl = null; editItemId = id; currentScreen = "edit_series" },
-                    onAddVolume = { seriesId -> addVolumeSeriesId = seriesId; pendingCoverUrl = null; currentScreen = "add_volume" },
-                    onEditVolume = { id -> pendingCoverUrl = null; editItemId = id; currentScreen = "edit_volume" }
-                )
-                MediaTab.MOVIES -> MoviesScreen(
-                    movies = state.movies,
-                    onMovieClick = { id -> pendingCoverUrl = null; editItemId = id; currentScreen = "edit_movie" },
-                    onAddMovie = { pendingCoverUrl = null; currentScreen = "add_movie" }
-                )
-                MediaTab.GAMES -> GamesScreen(
-                    games = state.games,
-                    onGameClick = { id -> pendingCoverUrl = null; editItemId = id; currentScreen = "edit_game" },
-                    onAddGame = { pendingCoverUrl = null; currentScreen = "add_game" }
-                )
+            HorizontalPager(
+                state = pagerState,
+                modifier = Modifier.fillMaxSize()
+            ) { page ->
+                when (MediaTab.entries[page]) {
+                    MediaTab.BOOKS -> BooksScreen(
+                        books = state.books,
+                        mangaSeries = state.mangaSeries,
+                        expandedSeriesIds = state.expandedSeriesIds,
+                        onBookClick = { id -> pendingCoverUrl = null; editItemId = id; currentScreen = "edit_book" },
+                        onAddBook = { pendingCoverUrl = null; currentScreen = "add_book" },
+                        onAddSeries = { pendingCoverUrl = null; currentScreen = "add_series" },
+                        onSeriesClick = { viewModel.toggleSeriesExpanded(it) },
+                        onEditSeries = { id -> pendingCoverUrl = null; editItemId = id; currentScreen = "edit_series" },
+                        onAddVolume = { seriesId -> addVolumeSeriesId = seriesId; pendingCoverUrl = null; currentScreen = "add_volume" },
+                        onEditVolume = { id -> pendingCoverUrl = null; editItemId = id; currentScreen = "edit_volume" }
+                    )
+                    MediaTab.MOVIES -> MoviesScreen(
+                        movies = state.movies,
+                        onMovieClick = { id -> pendingCoverUrl = null; editItemId = id; currentScreen = "edit_movie" },
+                        onAddMovie = { pendingCoverUrl = null; currentScreen = "add_movie" }
+                    )
+                    MediaTab.GAMES -> GamesScreen(
+                        games = state.games,
+                        onGameClick = { id -> pendingCoverUrl = null; editItemId = id; currentScreen = "edit_game" },
+                        onAddGame = { pendingCoverUrl = null; currentScreen = "add_game" }
+                    )
+                }
             }
         } else {
             when (currentScreen) {
@@ -151,7 +176,7 @@ fun MediaLoggerContent(
                     selectedTitle = pendingTitle,
                     onSearchCover = { q -> goToImageSearch(if (q.isBlank()) "cover" else "$q cover", "add_book") },
                     onNavigateBack = { goToMain() },
-                    onSave = { title, coverUrl, rating, date, notes, _, author ->
+                    onSave = { title, coverUrl, rating, date, notes, _, author, _ ->
                         viewModel.addMediaItem(title, coverUrl, rating, date, notes, MediaType.BOOK, author = author)
                         goToMain()
                     }
@@ -172,7 +197,7 @@ fun MediaLoggerContent(
                         onSearchCover = { q -> goToImageSearch(q.ifBlank { "book cover" }, "edit_book") },
                         onNavigateBack = { goToMain() },
                         onNavigateBackWithDelete = { viewModel.deleteMediaItem(id); goToMain() },
-                        onSave = { title, coverUrl, rating, date, notes, _, author ->
+                        onSave = { title, coverUrl, rating, date, notes, _, author, _ ->
                             viewModel.updateMediaItem(id, title, coverUrl, rating, date, notes, author = author)
                             goToMain()
                         }
@@ -185,8 +210,8 @@ fun MediaLoggerContent(
                     selectedTitle = pendingTitle,
                     onSearchCover = { q -> goToImageSearch(if (q.isBlank()) "cover" else "$q cover", "add_movie") },
                     onNavigateBack = { goToMain() },
-                    onSave = { title, coverUrl, rating, date, notes, _, _ ->
-                        viewModel.addMediaItem(title, coverUrl, rating, date, notes, MediaType.MOVIE)
+                    onSave = { title, coverUrl, rating, date, notes, _, _, isRewatch ->
+                        viewModel.addMediaItem(title, coverUrl, rating, date, notes, MediaType.MOVIE, isRewatch = isRewatch)
                         goToMain()
                     }
                 )
@@ -202,12 +227,13 @@ fun MediaLoggerContent(
                         existingRating = item?.rating,
                         existingDate = item?.dateCompleted,
                         existingNotes = item?.notes ?: "",
+                        existingIsRewatch = item?.isRewatch ?: false,
                         selectedCoverUrl = pendingCoverUrl,
                         onSearchCover = { q -> goToImageSearch(q.ifBlank { "movie poster" }, "edit_movie") },
                         onNavigateBack = { goToMain() },
                         onNavigateBackWithDelete = { viewModel.deleteMediaItem(id); goToMain() },
-                        onSave = { title, coverUrl, rating, date, notes, _, _ ->
-                            viewModel.updateMediaItem(id, title, coverUrl, rating, date, notes)
+                        onSave = { title, coverUrl, rating, date, notes, _, _, isRewatch ->
+                            viewModel.updateMediaItem(id, title, coverUrl, rating, date, notes, isRewatch = isRewatch)
                             goToMain()
                         }
                     )
@@ -219,8 +245,8 @@ fun MediaLoggerContent(
                     selectedTitle = pendingTitle,
                     onSearchCover = { q -> goToImageSearch(if (q.isBlank()) "cover" else "$q cover", "add_game") },
                     onNavigateBack = { goToMain() },
-                    onSave = { title, coverUrl, rating, date, notes, platform, _ ->
-                        viewModel.addMediaItem(title, coverUrl, rating, date, notes, MediaType.GAME, platform = platform)
+                    onSave = { title, coverUrl, rating, date, notes, platform, _, isRewatch ->
+                        viewModel.addMediaItem(title, coverUrl, rating, date, notes, MediaType.GAME, platform = platform, isRewatch = isRewatch)
                         goToMain()
                     }
                 )
@@ -237,12 +263,13 @@ fun MediaLoggerContent(
                         existingDate = item?.dateCompleted,
                         existingNotes = item?.notes ?: "",
                         existingPlatform = item?.platform ?: "",
+                        existingIsRewatch = item?.isRewatch ?: false,
                         selectedCoverUrl = pendingCoverUrl,
                         onSearchCover = { q -> goToImageSearch(q.ifBlank { "game cover art" }, "edit_game") },
                         onNavigateBack = { goToMain() },
                         onNavigateBackWithDelete = { viewModel.deleteMediaItem(id); goToMain() },
-                        onSave = { title, coverUrl, rating, date, notes, platform, _ ->
-                            viewModel.updateMediaItem(id, title, coverUrl, rating, date, notes, platform = platform)
+                        onSave = { title, coverUrl, rating, date, notes, platform, _, isRewatch ->
+                            viewModel.updateMediaItem(id, title, coverUrl, rating, date, notes, platform = platform, isRewatch = isRewatch)
                             goToMain()
                         }
                     )
@@ -254,7 +281,7 @@ fun MediaLoggerContent(
                     selectedTitle = pendingTitle,
                     onSearchCover = { q -> goToImageSearch(if (q.isBlank()) "cover" else "$q cover", "add_series") },
                     onNavigateBack = { goToMain() },
-                    onSave = { title, coverUrl, _, date, _, _, author ->
+                    onSave = { title, coverUrl, _, date, _, _, author, _ ->
                         viewModel.addMangaSeries(title, coverUrl, author, date)
                         goToMain()
                     }
@@ -274,7 +301,7 @@ fun MediaLoggerContent(
                         onSearchCover = { q -> goToImageSearch(q.ifBlank { "manga cover" }, "edit_series") },
                         onNavigateBack = { goToMain() },
                         onNavigateBackWithDelete = { viewModel.deleteMangaSeries(id); goToMain() },
-                        onSave = { title, coverUrl, _, date, _, _, author ->
+                        onSave = { title, coverUrl, _, date, _, _, author, _ ->
                             viewModel.updateMangaSeries(id, title, coverUrl, author, date)
                             goToMain()
                         }

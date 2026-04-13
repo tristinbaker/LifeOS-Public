@@ -22,6 +22,7 @@ data class HabitEntity(
     val timesPerWeek: Int = 7,
     val reminderTime: Long? = null, // Millis since midnight
     val reminderEnabled: Boolean = false,
+    val reminderDays: String = "", // Comma-separated Calendar day constants: "2,3,4,5,6" = Mon-Fri; empty = every day
     val createdAt: Long = System.currentTimeMillis(),
     val isArchived: Boolean = false
 )

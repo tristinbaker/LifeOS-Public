@@ -92,7 +92,7 @@ class HabitsModule : LifeOSModule {
                 HabitEditorScreen(
                     habit = null,
                     onNavigateBack = { moduleNavController.popBackStack() },
-                    onSave = { name, description, frequency, daysOfWeek, timesPerWeek, reminderEnabled, reminderTime, onComplete ->
+                    onSave = { name, description, frequency, daysOfWeek, timesPerWeek, reminderEnabled, reminderTime, reminderDays, onComplete ->
                         viewModel.saveHabit(
                             id = null,
                             name = name,
@@ -102,6 +102,7 @@ class HabitsModule : LifeOSModule {
                             timesPerWeek = timesPerWeek,
                             reminderEnabled = reminderEnabled,
                             reminderTime = reminderTime,
+                            reminderDays = reminderDays,
                             onComplete = onComplete
                         )
                     },
@@ -120,7 +121,7 @@ class HabitsModule : LifeOSModule {
                 HabitEditorScreen(
                     habit = habit,
                     onNavigateBack = { moduleNavController.popBackStack() },
-                    onSave = { name, description, frequency, daysOfWeek, timesPerWeek, reminderEnabled, reminderTime, onComplete ->
+                    onSave = { name, description, frequency, daysOfWeek, timesPerWeek, reminderEnabled, reminderTime, reminderDays, onComplete ->
                         viewModel.saveHabit(
                             id = habitId,
                             name = name,
@@ -130,6 +131,7 @@ class HabitsModule : LifeOSModule {
                             timesPerWeek = timesPerWeek,
                             reminderEnabled = reminderEnabled,
                             reminderTime = reminderTime,
+                            reminderDays = reminderDays,
                             onComplete = onComplete
                         )
                     },

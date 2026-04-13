@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.lifeos.modules.lifeos_habittracker.data.local.HabitEntity
 import com.lifeos.modules.lifeos_habittracker.data.local.HabitFrequency
 import com.lifeos.modules.lifeos_habittracker.data.repository.HabitsRepository
+import com.lifeos.modules.lifeos_habittracker.notification.HabitReminderScheduler
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -20,7 +21,8 @@ data class HabitWithStats(
 
 @HiltViewModel
 class HabitsViewModel @Inject constructor(
-    private val repository: HabitsRepository
+    private val repository: HabitsRepository,
+    private val reminderScheduler: HabitReminderScheduler
 ) : ViewModel() {
 
     private val _habitsWithStats = MutableStateFlow<List<HabitWithStats>>(emptyList())
@@ -63,6 +65,7 @@ class HabitsViewModel @Inject constructor(
         timesPerWeek: Int,
         reminderEnabled: Boolean,
         reminderTime: Long?,
+        reminderDays: String,
         onComplete: () -> Unit
     ) {
         viewModelScope.launch {
@@ -74,15 +77,28 @@ class HabitsViewModel @Inject constructor(
                 daysOfWeek = daysOfWeek,
                 timesPerWeek = timesPerWeek,
                 reminderEnabled = reminderEnabled,
-                reminderTime = if (reminderEnabled) reminderTime else null
+                reminderTime = if (reminderEnabled) reminderTime else null,
+                reminderDays = if (reminderEnabled) reminderDays else ""
             )
-            
-            if (id != null && id > 0) {
+
+            val savedId: Long = if (id != null && id > 0) {
                 repository.updateHabit(habit)
+                id
             } else {
                 repository.insertHabit(habit)
             }
-            
+
+            if (reminderEnabled && reminderTime != null) {
+                reminderScheduler.scheduleReminders(
+                    habitId = savedId,
+                    habitName = name,
+                    reminderTimeMillis = reminderTime,
+                    reminderDays = reminderDays
+                )
+            } else {
+                reminderScheduler.cancelReminders(savedId)
+            }
+
             onComplete()
         }
     }
