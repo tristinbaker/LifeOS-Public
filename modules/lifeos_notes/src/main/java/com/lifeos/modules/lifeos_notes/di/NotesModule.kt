@@ -19,13 +19,13 @@ object NotesModule {
     @Provides
     @Singleton
     fun provideNotesDatabase(@ApplicationContext context: Context): NotesDatabase {
-        // Migrate from the old shared "lifeos_db" filename to a module-specific one
+        // Delete the old shared "lifeos_db" file — it was corrupted by a naming conflict
+        // with the mealtracker module (both used "lifeos_db"). The schema can't be trusted.
         val oldDb = context.getDatabasePath("lifeos_db")
-        val newDb = context.getDatabasePath("lifeos_notes.db")
-        if (oldDb.exists() && !newDb.exists()) {
-            oldDb.renameTo(newDb)
-            File("${oldDb.path}-shm").takeIf { it.exists() }?.renameTo(File("${newDb.path}-shm"))
-            File("${oldDb.path}-wal").takeIf { it.exists() }?.renameTo(File("${newDb.path}-wal"))
+        if (oldDb.exists()) {
+            oldDb.delete()
+            File("${oldDb.path}-shm").delete()
+            File("${oldDb.path}-wal").delete()
         }
         return Room.databaseBuilder(
             context,
