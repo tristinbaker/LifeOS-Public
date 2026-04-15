@@ -43,5 +43,6 @@ data class MangaVolume(
 enum class MediaTab {
     BOOKS,
     MOVIES,
-    GAMES
+    GAMES,
+    STATS
 }

@@ -33,6 +33,7 @@ import com.lifeos.modules.lifeos_medialogger.ui.components.ImageSearchScreen
 import com.lifeos.modules.lifeos_medialogger.ui.components.RatingSelector
 import com.lifeos.modules.lifeos_medialogger.ui.games.GamesScreen
 import com.lifeos.modules.lifeos_medialogger.ui.movies.MoviesScreen
+import com.lifeos.modules.lifeos_medialogger.ui.stats.StatsScreen
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -137,6 +138,7 @@ fun MediaLoggerContent(
                                 MediaTab.BOOKS -> "Books"
                                 MediaTab.MOVIES -> "Movies"
                                 MediaTab.GAMES -> "Games"
+                                MediaTab.STATS -> "Stats"
                             })
                         }
                     )
@@ -185,6 +187,7 @@ fun MediaLoggerContent(
                         onCollapsedMonthsChange = { gamesCollapsedMonths = it },
                         listState = gamesListState
                     )
+                    MediaTab.STATS -> StatsScreen()
                 }
             }
         } else {
