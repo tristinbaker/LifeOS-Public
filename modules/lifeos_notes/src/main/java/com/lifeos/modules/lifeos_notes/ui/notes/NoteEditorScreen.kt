@@ -15,6 +15,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
@@ -132,7 +134,8 @@ fun NoteEditorScreen(
                     value = content,
                     onValueChange = { content = it },
                     modifier = Modifier.fillMaxSize(),
-                    placeholder = { Text("Note content...") }
+                    placeholder = { Text("Note content...") },
+                    keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences)
                 )
             }
         }

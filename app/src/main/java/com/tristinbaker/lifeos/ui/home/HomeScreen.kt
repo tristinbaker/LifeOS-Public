@@ -4,6 +4,7 @@ import android.content.Intent
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.biometric.BiometricManager
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -18,30 +19,35 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.biometric.BiometricManager
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Backup
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.LockOpen
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.WbSunny
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -58,6 +64,9 @@ import androidx.documentfile.provider.DocumentFile
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lifeos.core.LifeOSModule
 import com.lifeos.core.ModuleRegistry
+import com.tristinbaker.lifeos.UserPreferences
+import com.tristinbaker.lifeos.WeatherData
+import com.tristinbaker.lifeos.WeatherService
 import com.tristinbaker.lifeos.backup.BackupManager
 import com.tristinbaker.lifeos.backup.BackupPreferences
 import com.tristinbaker.lifeos.backup.RestoreManager
@@ -76,6 +85,7 @@ fun HomeScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     var showBackupDialog by remember { mutableStateOf(false) }
     var showBiometricDialog by remember { mutableStateOf(false) }
+    var showHomeSettingsDialog by remember { mutableStateOf(false) }
     var pendingRestoreUri by remember { mutableStateOf<Uri?>(null) }
     var showRestoreConfirm by remember { mutableStateOf(false) }
     var isRestoring by remember { mutableStateOf(false) }
@@ -86,6 +96,26 @@ fun HomeScreen(
         .collectAsStateWithLifecycle(initialValue = null)
     val biometricEnabled by BackupPreferences.biometricEnabled(context)
         .collectAsStateWithLifecycle(initialValue = false)
+
+    val userName by UserPreferences.userName(context).collectAsStateWithLifecycle(initialValue = "")
+    val cityName by UserPreferences.cityName(context).collectAsStateWithLifecycle(initialValue = "")
+    val latitude by UserPreferences.latitude(context).collectAsStateWithLifecycle(initialValue = null)
+    val longitude by UserPreferences.longitude(context).collectAsStateWithLifecycle(initialValue = null)
+    val showWeather by UserPreferences.showWeather(context).collectAsStateWithLifecycle(initialValue = false)
+
+    var weatherData by remember { mutableStateOf<WeatherData?>(null) }
+    var isLoadingWeather by remember { mutableStateOf(false) }
+
+    LaunchedEffect(latitude, longitude, showWeather) {
+        if (showWeather && latitude != null && longitude != null) {
+            isLoadingWeather = true
+            val result = WeatherService.getWeather(latitude!!, longitude!!)
+            weatherData = result?.copy(cityName = cityName)
+            isLoadingWeather = false
+        } else {
+            weatherData = null
+        }
+    }
 
     val folderName = remember(folderUriString) {
         folderUriString?.let { DocumentFile.fromTreeUri(context, android.net.Uri.parse(it))?.name }
@@ -149,28 +179,26 @@ fun HomeScreen(
                 .fillMaxSize()
                 .padding(16.dp)
         ) {
-            Row(
+Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Column {
-                    Text(
-                        text = "LifeOS",
-                        style = MaterialTheme.typography.headlineLarge,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.padding(vertical = 8.dp)
-                    )
-                    Text(
-                        text = "Your personal life command center",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
-                        modifier = Modifier.padding(bottom = 8.dp)
-                    )
-                }
+                Text(
+                    text = "LifeOS",
+                    style = MaterialTheme.typography.headlineLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
+                )
 
                 Row {
+                    IconButton(onClick = { showHomeSettingsDialog = true }) {
+                        Icon(
+                            imageVector = Icons.Default.Settings,
+                            contentDescription = "Settings",
+                            tint = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
+                        )
+                    }
                     IconButton(onClick = { showBiometricDialog = true }) {
                         Icon(
                             imageVector = if (biometricEnabled) Icons.Default.Lock else Icons.Default.LockOpen,
@@ -193,6 +221,16 @@ fun HomeScreen(
                     }
                 }
             }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            WeatherCard(
+                userName = userName,
+                weatherData = weatherData,
+                isLoading = isLoadingWeather
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
 
             LazyVerticalGrid(
                 columns = GridCells.Fixed(2),
@@ -332,6 +370,16 @@ fun HomeScreen(
             }
         )
     }
+
+    if (showHomeSettingsDialog) {
+        HomeSettingsDialog(
+            currentName = userName,
+            currentCity = cityName,
+            currentShowWeather = showWeather,
+            onDismiss = { showHomeSettingsDialog = false },
+            onSave = { _, _, _ -> }
+        )
+    }
 }
 
 @Composable
@@ -420,6 +468,199 @@ private fun BackupDialog(
         },
         confirmButton = {
             TextButton(onClick = onDismiss) { Text("Close") }
+        }
+    )
+}
+
+@Composable
+private fun WeatherCard(
+    userName: String,
+    weatherData: WeatherData?,
+    isLoading: Boolean
+) {
+    val displayName = if (userName.isBlank()) "" else userName
+    
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.primaryContainer
+        )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            if (displayName.isNotBlank()) {
+                Text(
+                    text = "Hello, $displayName",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+            }
+            
+            if (isLoading) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(16.dp),
+                        strokeWidth = 2.dp
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "Loading weather...",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+                    )
+                }
+            } else if (weatherData != null && weatherData.cityName.isNotBlank()) {
+                Text(
+                    text = "It's currently ${weatherData.condition.lowercase()} in ${weatherData.cityName} and ${weatherData.temperature}\u00b0.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "The high is ${weatherData.highTemp}\u00b0 and the low is ${weatherData.lowTemp}\u00b0.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "It ${if (weatherData.willRain) "is" else "is not"} supposed to rain today.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                )
+            } else if (weatherData != null) {
+                Text(
+                    text = "Weather settings configured. Enter a city to see weather.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+                )
+            } else {
+                Text(
+                    text = "Tap the gear icon to set up weather.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun HomeSettingsDialog(
+    currentName: String,
+    currentCity: String,
+    currentShowWeather: Boolean,
+    onDismiss: () -> Unit,
+    onSave: (name: String, city: String, showWeather: Boolean) -> Unit
+) {
+    var name by remember { mutableStateOf(currentName) }
+    var city by remember { mutableStateOf(currentCity) }
+    var showWeather by remember { mutableStateOf(currentShowWeather) }
+    var isGeocoding by remember { mutableStateOf(false) }
+    var geocodeError by remember { mutableStateOf<String?>(null) }
+
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Home Settings") },
+        text = {
+            Column {
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    label = { Text("Your name") },
+                    placeholder = { Text("friend") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                OutlinedTextField(
+                    value = city,
+                    onValueChange = { 
+                        city = it
+                        geocodeError = null
+                    },
+                    label = { Text("City") },
+                    placeholder = { Text("Chattanooga") },
+                    singleLine = true,
+                    isError = geocodeError != null,
+                    supportingText = geocodeError?.let { { Text(it) } },
+                    trailingIcon = {
+                        if (isGeocoding) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(16.dp),
+                                strokeWidth = 2.dp
+                            )
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("Show weather")
+                    Switch(
+                        checked = showWeather,
+                        onCheckedChange = { showWeather = it }
+                    )
+                }
+
+                if (geocodeError != null) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = geocodeError!!,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    scope.launch {
+                        if (city.isNotBlank()) {
+                            isGeocoding = true
+                            geocodeError = null
+                            val result = WeatherService.geocodeCity(city)
+                            isGeocoding = false
+                            if (result != null) {
+                                val (displayName, lat, lon) = result
+                                UserPreferences.setLocation(context, displayName, lat, lon)
+                                UserPreferences.setUserName(context, name)
+                                UserPreferences.setShowWeather(context, showWeather)
+                                onDismiss()
+                            } else {
+                                geocodeError = "Could not find city"
+                            }
+                        } else {
+                            UserPreferences.setUserName(context, name)
+                            UserPreferences.setShowWeather(context, false)
+                            onDismiss()
+                        }
+                    }
+                },
+                enabled = !isGeocoding
+            ) {
+                Text("Save")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
         }
     )
 }
