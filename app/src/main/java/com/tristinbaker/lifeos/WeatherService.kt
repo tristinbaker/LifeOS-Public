@@ -12,7 +12,10 @@ data class WeatherData(
     val highTemp: Int,
     val lowTemp: Int,
     val willRain: Boolean,
-    val cityName: String
+    val cityName: String,
+    val weatherCode: Int,
+    val airQuality: Int? = null,
+    val airQualityLabel: String? = null
 )
 
 object WeatherService {
@@ -36,14 +39,34 @@ object WeatherService {
 
     suspend fun getWeather(latitude: Double, longitude: Double): WeatherData? = withContext(Dispatchers.IO) {
         try {
-            val url = "https://api.open-meteo.com/v1/forecast?latitude=$latitude&longitude=$longitude&current_weather=true&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max,weathercode&temperature_unit=fahrenheit&timezone=auto&forecast_days=1"
-            val response = URL(url).readText()
+            val weatherUrl = "https://api.open-meteo.com/v1/forecast?latitude=$latitude&longitude=$longitude&current_weather=true&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max,weathercode&temperature_unit=fahrenheit&timezone=auto&forecast_days=1"
+            val weatherResponse = URL(weatherUrl).readText()
             
-            val currentWeatherMatch = Regex("\"current_weather\":\\{[^}]*\"temperature\":(-?\\d+\\.?\\d*)[^}]*\"weathercode\":(\\d+)").find(response)
-            val dailyWeathercodeMatch = Regex("\"daily\":\\{[^}]*\"weathercode\":\\[(\\d+)").find(response)
-            val highTempMatch = Regex("\"temperature_2m_max\":\\[(-?\\d+)").find(response)
-            val lowTempMatch = Regex("\"temperature_2m_min\":\\[(-?\\d+)").find(response)
-            val precipMatch = Regex("\"precipitation_probability_max\":\\[(\\d+)").find(response)
+            val currentWeatherMatch = Regex("\"current_weather\":\\{[^}]*\"temperature\":(-?\\d+\\.?\\d*)[^}]*\"weathercode\":(\\d+)").find(weatherResponse)
+            val dailyWeathercodeMatch = Regex("\"daily\":\\{[^}]*\"weathercode\":\\[(\\d+)").find(weatherResponse)
+            val highTempMatch = Regex("\"temperature_2m_max\":\\[(-?\\d+)").find(weatherResponse)
+            val lowTempMatch = Regex("\"temperature_2m_min\":\\[(-?\\d+)").find(weatherResponse)
+            val precipMatch = Regex("\"precipitation_probability_max\":\\[(\\d+)").find(weatherResponse)
+            
+            var airQuality: Int? = null
+            var airQualityLabel: String? = null
+            try {
+                val aqUrl = "https://air-quality-api.open-meteo.com/v1/air-quality?latitude=$latitude&longitude=$longitude&current=european_aqi"
+                val aqResponse = URL(aqUrl).readText()
+                val aqMatch = Regex("\"european_aqi\":(\\d+)").find(aqResponse)
+                airQuality = aqMatch?.groupValues?.get(1)?.toIntOrNull()
+                airQualityLabel = when {
+                    airQuality != null && airQuality <= 20 -> "Good"
+                    airQuality != null && airQuality <= 40 -> "Fair"
+                    airQuality != null && airQuality <= 60 -> "Moderate"
+                    airQuality != null && airQuality <= 80 -> "Poor"
+                    airQuality != null && airQuality <= 100 -> "Very Poor"
+                    airQuality != null -> "Extremely Poor"
+                    else -> null
+                }
+            } catch (e: Exception) {
+                // Air quality API failed, we'll show "AQ: N/A"
+            }
             
             if (currentWeatherMatch != null && highTempMatch != null && lowTempMatch != null) {
                 val temperature = currentWeatherMatch.groupValues[1].toDouble().toInt()
@@ -54,7 +77,7 @@ object WeatherService {
                 val precipProb = precipMatch?.groupValues?.get(1)?.toIntOrNull() ?: 0
                 val willRain = precipProb >= 30 && (weathercode >= 51 || isRainyCode(weathercode))
                 
-                WeatherData(condition, temperature, highTemp, lowTemp, willRain, "")
+                WeatherData(condition, temperature, highTemp, lowTemp, willRain, "", weathercode, airQuality, airQualityLabel)
             } else {
                 null
             }

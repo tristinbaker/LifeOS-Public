@@ -27,16 +27,17 @@ class DashboardViewModel @Inject constructor(
 
     private val _selectedDate = MutableStateFlow(LocalDate.now())
 
-    val uiState: StateFlow<DashboardUiState> = combine(
-        _selectedDate,
-        mealRepository.getDailyTotals(LocalDate.now()),
-        settingsRepository.settings
-    ) { date, totals, settings ->
-        DashboardUiState(
-            selectedDate = date,
-            dailyTotals = totals,
-            settings = settings
-        )
+    val uiState: StateFlow<DashboardUiState> = _selectedDate.flatMapLatest { date ->
+        combine(
+            mealRepository.getDailyTotals(date),
+            settingsRepository.settings
+        ) { totals, settings ->
+            DashboardUiState(
+                selectedDate = date,
+                dailyTotals = totals,
+                settings = settings
+            )
+        }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), DashboardUiState())
 
     fun deleteMeal(meal: MealEntry) {

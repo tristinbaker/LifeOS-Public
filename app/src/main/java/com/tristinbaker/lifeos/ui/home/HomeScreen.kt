@@ -26,10 +26,14 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Backup
+import androidx.compose.material.icons.filled.Cloud
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.LockOpen
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Thunderstorm
+import androidx.compose.material.icons.filled.WaterDrop
 import androidx.compose.material.icons.filled.WbSunny
+import androidx.compose.material.icons.filled.AcUnit
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -516,23 +520,43 @@ private fun WeatherCard(
                     )
                 }
             } else if (weatherData != null && weatherData.cityName.isNotBlank()) {
-                Text(
-                    text = "It's currently ${weatherData.condition.lowercase()} in ${weatherData.cityName} and ${weatherData.temperature}\u00b0.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = "The high is ${weatherData.highTemp}\u00b0 and the low is ${weatherData.lowTemp}\u00b0.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = "It ${if (weatherData.willRain) "is" else "is not"} supposed to rain today.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = getWeatherIcon(weatherData.weatherCode),
+                        contentDescription = weatherData.condition,
+                        modifier = Modifier.size(40.dp),
+                        tint = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Column {
+                        Text(
+                            text = "It's currently ${weatherData.condition.lowercase()} in ${weatherData.cityName} and ${weatherData.temperature}\u00b0.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "High: ${weatherData.highTemp}\u00b0  Low: ${weatherData.lowTemp}\u00b0",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                        if (weatherData.airQualityLabel != null) {
+                            Text(
+                                text = "AQ: ${weatherData.airQualityLabel}",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                        } else {
+                            Text(
+                                text = "AQ: N/A",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+                            )
+                        }
+                    }
+                }
             } else if (weatherData != null) {
                 Text(
                     text = "Weather settings configured. Enter a city to see weather.",
@@ -547,6 +571,18 @@ private fun WeatherCard(
                 )
             }
         }
+    }
+}
+
+private fun getWeatherIcon(weatherCode: Int): androidx.compose.ui.graphics.vector.ImageVector {
+    return when (weatherCode) {
+        0 -> Icons.Default.WbSunny
+        1, 2, 3 -> Icons.Default.WbSunny
+        45, 48 -> Icons.Default.Cloud
+        51, 53, 55, 56, 57, 61, 63, 65, 66, 67, 80, 81, 82 -> Icons.Default.WaterDrop
+        71, 73, 75, 77, 85, 86 -> Icons.Default.AcUnit
+        95, 96, 99 -> Icons.Default.Thunderstorm
+        else -> Icons.Default.WbSunny
     }
 }
 
