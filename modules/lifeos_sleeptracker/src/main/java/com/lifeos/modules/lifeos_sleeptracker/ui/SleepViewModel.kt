@@ -19,7 +19,7 @@ data class SleepLogWithDuration(
 
 data class SleepUiState(
     val logs: List<SleepLogWithDuration> = emptyList(),
-    val weeklyStats: WeeklyStats = WeeklyStats(0f, 0f, 0),
+    val weeklyStats: WeeklyStats = WeeklyStats(0f, 0f, 0, "--:--", "--:--"),
     val settings: SleepSettingsEntity? = null
 )
 

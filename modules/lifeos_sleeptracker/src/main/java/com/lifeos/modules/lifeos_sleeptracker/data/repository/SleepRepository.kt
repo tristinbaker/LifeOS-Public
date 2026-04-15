@@ -5,7 +5,10 @@ import com.lifeos.modules.lifeos_sleeptracker.data.local.SleepLogEntity
 import com.lifeos.modules.lifeos_sleeptracker.data.local.SleepSettingsDao
 import com.lifeos.modules.lifeos_sleeptracker.data.local.SleepSettingsEntity
 import kotlinx.coroutines.flow.Flow
+import java.time.Instant
 import java.time.LocalDate
+import java.time.LocalTime
+import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -54,7 +57,35 @@ class SleepRepository @Inject constructor(
         val totalHours = logs.sumOf { calculateDurationHours(it.startTime, it.endTime).toDouble() }.toFloat()
         val avgQuality = logs.map { it.quality }.average().toFloat()
 
-        return WeeklyStats(avgQuality, totalHours, logs.size)
+        val avgBedTime = calculateAverageTime(logs.map { it.startTime })
+        val avgWakeTime = calculateAverageTime(logs.map { it.endTime })
+
+        return WeeklyStats(avgQuality, totalHours, logs.size, avgBedTime, avgWakeTime)
+    }
+
+    private fun calculateAverageTime(times: List<Long>): String {
+        if (times.isEmpty()) return "--:--"
+
+        val hours = times.map { time ->
+            val localTime = LocalTime.ofInstant(Instant.ofEpochMilli(time), ZoneId.systemDefault())
+            localTime.hour + localTime.minute / 60.0
+        }
+        val avgHours = circularMean(hours)
+        val avgTime = LocalTime.of((avgHours.toInt() + 24) % 24, ((avgHours % 1.0) * 60).toInt())
+
+        return avgTime.format(DateTimeFormatter.ofPattern("h:mm a"))
+    }
+
+    private fun circularMean(values: List<Double>): Double {
+        if (values.isEmpty()) return 0.0
+
+        val sumSin = values.sumOf { kotlin.math.sin(2.0 * Math.PI * it / 24.0) }
+        val sumCos = values.sumOf { kotlin.math.cos(2.0 * Math.PI * it / 24.0) }
+        val meanAngle = kotlin.math.atan2(sumSin, sumCos)
+        var result = meanAngle * 24.0 / (2.0 * Math.PI)
+
+        if (result < 0) result += 24.0
+        return result
     }
 
     fun getSettings(): Flow<SleepSettingsEntity?> = sleepSettingsDao.getSettings()
@@ -69,5 +100,7 @@ class SleepRepository @Inject constructor(
 data class WeeklyStats(
     val avgQuality: Float,
     val totalHours: Float,
-    val daysLogged: Int
+    val daysLogged: Int,
+    val avgBedTime: String = "--:--",
+    val avgWakeTime: String = "--:--"
 )
