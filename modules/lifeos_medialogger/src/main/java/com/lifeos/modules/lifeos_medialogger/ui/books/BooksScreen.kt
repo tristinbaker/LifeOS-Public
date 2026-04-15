@@ -6,6 +6,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -14,7 +16,6 @@ import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.material3.*
 import androidx.compose.material3.DropdownMenu
@@ -43,10 +44,13 @@ fun BooksScreen(
     onSeriesClick: (Long) -> Unit,
     onEditSeries: (Long) -> Unit,
     onAddVolume: (Long) -> Unit,
-    onEditVolume: (Long) -> Unit
+    onEditVolume: (Long) -> Unit,
+    collapsedYears: Set<String> = emptySet(),
+    onCollapsedYearsChange: (Set<String>) -> Unit = {},
+    collapsedMonths: Set<String> = emptySet(),
+    onCollapsedMonthsChange: (Set<String>) -> Unit = {},
+    listState: LazyListState = rememberLazyListState()
 ) {
-    var collapsedYears by rememberSaveable { mutableStateOf(emptySet<String>()) }
-    var collapsedMonths by rememberSaveable { mutableStateOf(emptySet<String>()) }
 
     // Resolve series completion date and average rating
     val seriesWithDate = mangaSeries.map { series ->
@@ -132,6 +136,7 @@ fun BooksScreen(
         }
     ) { padding ->
         LazyColumn(
+            state = listState,
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding),
@@ -146,10 +151,11 @@ fun BooksScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clickable {
-                                collapsedYears = if (isYearCollapsed)
+                                onCollapsedYearsChange(if (isYearCollapsed)
                                     collapsedYears - year
                                 else
                                     collapsedYears + year
+                                )
                             }
                             .padding(vertical = 8.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -180,10 +186,11 @@ fun BooksScreen(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .clickable {
-                                        collapsedMonths = if (isMonthCollapsed)
+                                        onCollapsedMonthsChange(if (isMonthCollapsed)
                                             collapsedMonths - monthCollapseKey
                                         else
                                             collapsedMonths + monthCollapseKey
+                                        )
                                     }
                                     .padding(start = 16.dp, top = 4.dp, bottom = 4.dp),
                                 horizontalArrangement = Arrangement.SpaceBetween,

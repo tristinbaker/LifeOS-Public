@@ -20,3 +20,12 @@ data class JournalSettingsEntity(
     val reminderEnabled: Boolean = false,
     val reminderTime: Long = 21 * 60 * 60 * 1000 // Default 9:00 PM
 )
+
+@Entity(tableName = "journal_images")
+data class JournalImageEntity(
+    @PrimaryKey(autoGenerate = true)
+    val id: Long = 0,
+    val entryId: Long,
+    val localPath: String,
+    val createdAt: Long = System.currentTimeMillis()
+)

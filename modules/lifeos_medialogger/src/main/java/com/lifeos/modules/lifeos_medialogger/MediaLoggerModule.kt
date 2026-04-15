@@ -3,6 +3,7 @@ package com.lifeos.modules.lifeos_medialogger
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
@@ -66,6 +67,19 @@ fun MediaLoggerContent(
     var pendingVolumeNumber by remember { mutableStateOf<String?>(null) }
     var imageSearchQuery by remember { mutableStateOf("") }
     var screenBeforeSearch by remember { mutableStateOf("main") }
+
+    // Collapse + scroll state hoisted here so navigating to/from edit screens doesn't reset them
+    var booksCollapsedYears by remember { mutableStateOf(emptySet<String>()) }
+    var booksCollapsedMonths by remember { mutableStateOf(emptySet<String>()) }
+    val booksListState = rememberLazyListState()
+
+    var moviesCollapsedYears by remember { mutableStateOf(emptySet<String>()) }
+    var moviesCollapsedMonths by remember { mutableStateOf(emptySet<String>()) }
+    val moviesListState = rememberLazyListState()
+
+    var gamesCollapsedYears by remember { mutableStateOf(emptySet<String>()) }
+    var gamesCollapsedMonths by remember { mutableStateOf(emptySet<String>()) }
+    val gamesListState = rememberLazyListState()
 
     fun goToMain() {
         pendingCoverUrl = null
@@ -144,17 +158,32 @@ fun MediaLoggerContent(
                         onSeriesClick = { viewModel.toggleSeriesExpanded(it) },
                         onEditSeries = { id -> pendingCoverUrl = null; editItemId = id; currentScreen = "edit_series" },
                         onAddVolume = { seriesId -> addVolumeSeriesId = seriesId; pendingCoverUrl = null; currentScreen = "add_volume" },
-                        onEditVolume = { id -> pendingCoverUrl = null; editItemId = id; currentScreen = "edit_volume" }
+                        onEditVolume = { id -> pendingCoverUrl = null; editItemId = id; currentScreen = "edit_volume" },
+                        collapsedYears = booksCollapsedYears,
+                        onCollapsedYearsChange = { booksCollapsedYears = it },
+                        collapsedMonths = booksCollapsedMonths,
+                        onCollapsedMonthsChange = { booksCollapsedMonths = it },
+                        listState = booksListState
                     )
                     MediaTab.MOVIES -> MoviesScreen(
                         movies = state.movies,
                         onMovieClick = { id -> pendingCoverUrl = null; editItemId = id; currentScreen = "edit_movie" },
-                        onAddMovie = { pendingCoverUrl = null; currentScreen = "add_movie" }
+                        onAddMovie = { pendingCoverUrl = null; currentScreen = "add_movie" },
+                        collapsedYears = moviesCollapsedYears,
+                        onCollapsedYearsChange = { moviesCollapsedYears = it },
+                        collapsedMonths = moviesCollapsedMonths,
+                        onCollapsedMonthsChange = { moviesCollapsedMonths = it },
+                        listState = moviesListState
                     )
                     MediaTab.GAMES -> GamesScreen(
                         games = state.games,
                         onGameClick = { id -> pendingCoverUrl = null; editItemId = id; currentScreen = "edit_game" },
-                        onAddGame = { pendingCoverUrl = null; currentScreen = "add_game" }
+                        onAddGame = { pendingCoverUrl = null; currentScreen = "add_game" },
+                        collapsedYears = gamesCollapsedYears,
+                        onCollapsedYearsChange = { gamesCollapsedYears = it },
+                        collapsedMonths = gamesCollapsedMonths,
+                        onCollapsedMonthsChange = { gamesCollapsedMonths = it },
+                        listState = gamesListState
                     )
                 }
             }
@@ -165,7 +194,7 @@ fun MediaLoggerContent(
                     searchService = viewModel.imageSearchService,
                     onImageSelected = { url, query ->
                         pendingCoverUrl = url
-                        pendingTitle = query.removeSuffix(COVER_SEARCH_SUFFIX).trim().ifBlank { null }
+                        pendingTitle = query.removeSuffix(" movie poster").removeSuffix(COVER_SEARCH_SUFFIX).trim().ifBlank { null }
                         currentScreen = screenBeforeSearch
                     },
                     onNavigateBack = { currentScreen = screenBeforeSearch }
@@ -208,7 +237,7 @@ fun MediaLoggerContent(
                     isMovie = true,
                     selectedCoverUrl = pendingCoverUrl,
                     selectedTitle = pendingTitle,
-                    onSearchCover = { q -> goToImageSearch(if (q.isBlank()) "cover" else "$q cover", "add_movie") },
+                    onSearchCover = { q -> goToImageSearch(if (q.isBlank()) "movie poster" else "$q movie poster", "add_movie") },
                     onNavigateBack = { goToMain() },
                     onSave = { title, coverUrl, rating, date, notes, _, _, isRewatch ->
                         viewModel.addMediaItem(title, coverUrl, rating, date, notes, MediaType.MOVIE, isRewatch = isRewatch)
@@ -229,7 +258,7 @@ fun MediaLoggerContent(
                         existingNotes = item?.notes ?: "",
                         existingIsRewatch = item?.isRewatch ?: false,
                         selectedCoverUrl = pendingCoverUrl,
-                        onSearchCover = { q -> goToImageSearch(q.ifBlank { "movie poster" }, "edit_movie") },
+                        onSearchCover = { q -> goToImageSearch(if (q.isBlank()) "movie poster" else "$q movie poster", "edit_movie") },
                         onNavigateBack = { goToMain() },
                         onNavigateBackWithDelete = { viewModel.deleteMediaItem(id); goToMain() },
                         onSave = { title, coverUrl, rating, date, notes, _, _, isRewatch ->

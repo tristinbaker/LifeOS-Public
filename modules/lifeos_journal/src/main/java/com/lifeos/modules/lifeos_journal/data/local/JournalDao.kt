@@ -47,3 +47,24 @@ interface JournalSettingsDao {
     @Update
     suspend fun updateSettings(settings: JournalSettingsEntity)
 }
+
+@Dao
+interface JournalImageDao {
+    @Query("SELECT * FROM journal_images WHERE entryId = :entryId ORDER BY createdAt ASC")
+    fun getImagesForEntry(entryId: Long): Flow<List<JournalImageEntity>>
+
+    @Query("SELECT * FROM journal_images WHERE entryId = :entryId ORDER BY createdAt ASC")
+    suspend fun getImagesForEntryOnce(entryId: Long): List<JournalImageEntity>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertImage(image: JournalImageEntity): Long
+
+    @Query("SELECT localPath FROM journal_images WHERE id = :imageId")
+    suspend fun getLocalPath(imageId: Long): String?
+
+    @Query("DELETE FROM journal_images WHERE id = :imageId")
+    suspend fun deleteImage(imageId: Long)
+
+    @Query("DELETE FROM journal_images WHERE entryId = :entryId")
+    suspend fun deleteAllImagesForEntry(entryId: Long)
+}

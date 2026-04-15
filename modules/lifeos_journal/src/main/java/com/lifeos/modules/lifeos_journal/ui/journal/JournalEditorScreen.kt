@@ -1,20 +1,37 @@
 package com.lifeos.modules.lifeos_journal.ui.journal
 
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
-import java.time.Instant
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import coil.compose.AsyncImage
+import com.lifeos.modules.lifeos_journal.data.local.JournalImageEntity
+import java.io.File
 import java.time.LocalDate
-import java.time.ZoneOffset
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.format.TextStyle
@@ -23,30 +40,52 @@ import java.util.Locale
 private val moodEmojis = listOf("😢", "😕", "😐", "🙂", "😊")
 private val moodLabels = listOf("Sad", "Down", "Okay", "Good", "Great")
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun JournalEditorScreen(
     entry: com.lifeos.modules.lifeos_journal.data.local.JournalEntryEntity?,
+    images: List<JournalImageEntity> = emptyList(),
     onNavigateBack: () -> Unit,
     onSave: (
         id: Long?,
         date: String,
         content: String,
         mood: Int,
+        newImageUris: List<Uri>,
+        removedImageIds: Set<Long>,
         onComplete: () -> Unit
     ) -> Unit,
     onDelete: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    var date by remember(entry) { 
-        mutableStateOf(entry?.date ?: LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE)) 
+    var date by remember(entry) {
+        mutableStateOf(entry?.date ?: LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE))
     }
     var content by remember(entry) { mutableStateOf(entry?.content ?: "") }
     var mood by remember(entry) { mutableStateOf(entry?.mood ?: 3) }
 
-    var showDatePicker by remember { mutableStateOf(false) }
+    var newImageUris by remember { mutableStateOf<List<Uri>>(emptyList()) }
+    var removedImageIds by remember { mutableStateOf<Set<Long>>(emptySet()) }
 
+    // Full-screen viewer state — holds File (existing) or Uri (new)
+    var viewerModel by remember { mutableStateOf<Any?>(null) }
+
+    // Long-press removal state
+    var pendingRemoveImage by remember { mutableStateOf<JournalImageEntity?>(null) }
+    var pendingRemoveUri by remember { mutableStateOf<Uri?>(null) }
+
+    val displayedExistingImages = remember(images, removedImageIds) {
+        images.filter { it.id !in removedImageIds }
+    }
+
+    var showDatePicker by remember { mutableStateOf(false) }
     val parsedDate = try { LocalDate.parse(date) } catch (e: Exception) { LocalDate.now() }
+
+    val imagePicker = rememberLauncherForActivityResult(
+        ActivityResultContracts.PickMultipleVisualMedia()
+    ) { uris ->
+        newImageUris = newImageUris + uris
+    }
 
     Column(
         modifier = modifier
@@ -104,10 +143,7 @@ fun JournalEditorScreen(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            MoodSelector(
-                mood = mood,
-                onMoodChange = { mood = it }
-            )
+            MoodSelector(mood = mood, onMoodChange = { mood = it })
 
             Spacer(modifier = Modifier.height(24.dp))
 
@@ -128,17 +164,74 @@ fun JournalEditorScreen(
                 placeholder = { Text("Write about your day, thoughts, feelings...") },
                 maxLines = 20
             )
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    "Memories",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                TextButton(
+                    onClick = {
+                        imagePicker.launch(
+                            PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                        )
+                    }
+                ) {
+                    Icon(Icons.Default.Add, null, modifier = Modifier.size(16.dp))
+                    Spacer(Modifier.width(4.dp))
+                    Text("Add Photos")
+                }
+            }
+
+            if (displayedExistingImages.isNotEmpty() || newImageUris.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(8.dp))
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    items(displayedExistingImages, key = { "existing_${it.id}" }) { image ->
+                        AsyncImage(
+                            model = File(image.localPath),
+                            contentDescription = "Memory",
+                            modifier = Modifier
+                                .size(100.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(MaterialTheme.colorScheme.surfaceVariant)
+                                .combinedClickable(
+                                    onClick = { viewerModel = File(image.localPath) },
+                                    onLongClick = { pendingRemoveImage = image }
+                                ),
+                            contentScale = ContentScale.Crop
+                        )
+                    }
+                    items(newImageUris, key = { "new_$it" }) { uri ->
+                        AsyncImage(
+                            model = uri,
+                            contentDescription = "New memory",
+                            modifier = Modifier
+                                .size(100.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(MaterialTheme.colorScheme.surfaceVariant)
+                                .combinedClickable(
+                                    onClick = { viewerModel = uri },
+                                    onLongClick = { pendingRemoveUri = uri }
+                                ),
+                            contentScale = ContentScale.Crop
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
         }
 
         Button(
             onClick = {
-                onSave(
-                    entry?.id,
-                    date,
-                    content,
-                    mood,
-                    onNavigateBack
-                )
+                onSave(entry?.id, date, content, mood, newImageUris, removedImageIds, onNavigateBack)
             },
             modifier = Modifier
                 .fillMaxWidth()
@@ -147,6 +240,63 @@ fun JournalEditorScreen(
         ) {
             Text(if (entry == null) "Save Entry" else "Save Changes")
         }
+    }
+
+    // Full-screen image viewer
+    if (viewerModel != null) {
+        Dialog(
+            onDismissRequest = { viewerModel = null },
+            properties = DialogProperties(usePlatformDefaultWidth = false)
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black)
+                    .clickable { viewerModel = null },
+                contentAlignment = Alignment.Center
+            ) {
+                AsyncImage(
+                    model = viewerModel,
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Fit
+                )
+            }
+        }
+    }
+
+    // Long-press remove confirmation for existing image
+    if (pendingRemoveImage != null) {
+        AlertDialog(
+            onDismissRequest = { pendingRemoveImage = null },
+            text = { Text("Remove this photo from Memories?") },
+            confirmButton = {
+                TextButton(onClick = {
+                    pendingRemoveImage?.let { removedImageIds = removedImageIds + it.id }
+                    pendingRemoveImage = null
+                }) { Text("Remove") }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingRemoveImage = null }) { Text("Cancel") }
+            }
+        )
+    }
+
+    // Long-press remove confirmation for newly added image
+    if (pendingRemoveUri != null) {
+        AlertDialog(
+            onDismissRequest = { pendingRemoveUri = null },
+            text = { Text("Remove this photo from Memories?") },
+            confirmButton = {
+                TextButton(onClick = {
+                    pendingRemoveUri?.let { newImageUris = newImageUris - it }
+                    pendingRemoveUri = null
+                }) { Text("Remove") }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingRemoveUri = null }) { Text("Cancel") }
+            }
+        )
     }
 
     if (showDatePicker) {

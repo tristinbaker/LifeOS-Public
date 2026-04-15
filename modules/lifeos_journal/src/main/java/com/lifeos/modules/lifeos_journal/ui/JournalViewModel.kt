@@ -1,13 +1,16 @@
 package com.lifeos.modules.lifeos_journal.ui
 
+import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.lifeos.modules.lifeos_journal.data.local.JournalEntryEntity
+import com.lifeos.modules.lifeos_journal.data.local.JournalImageEntity
 import com.lifeos.modules.lifeos_journal.data.local.JournalSettingsEntity
 import com.lifeos.modules.lifeos_journal.data.repository.JournalRepository
 import com.lifeos.modules.lifeos_journal.data.repository.WeeklyStats
 import com.lifeos.modules.lifeos_journal.notification.JournalReminderScheduler
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -15,7 +18,8 @@ import javax.inject.Inject
 data class JournalUiState(
     val entries: List<JournalEntryEntity> = emptyList(),
     val weeklyStats: WeeklyStats = WeeklyStats(0),
-    val settings: JournalSettingsEntity? = null
+    val settings: JournalSettingsEntity? = null,
+    val currentEntryImages: List<JournalImageEntity> = emptyList()
 )
 
 @HiltViewModel
@@ -26,6 +30,8 @@ class JournalViewModel @Inject constructor(
 
     private val _uiState = MutableStateFlow(JournalUiState())
     val uiState: StateFlow<JournalUiState> = _uiState.asStateFlow()
+
+    private var imagesJob: Job? = null
 
     init {
         loadData()
@@ -45,11 +51,26 @@ class JournalViewModel @Inject constructor(
         }
     }
 
+    fun loadImagesForEntry(entryId: Long?) {
+        imagesJob?.cancel()
+        if (entryId == null || entryId <= 0) {
+            _uiState.update { it.copy(currentEntryImages = emptyList()) }
+            return
+        }
+        imagesJob = viewModelScope.launch {
+            repository.getImagesForEntry(entryId).collect { images ->
+                _uiState.update { it.copy(currentEntryImages = images) }
+            }
+        }
+    }
+
     fun saveEntry(
         id: Long?,
         date: String,
         content: String,
         mood: Int,
+        newImageUris: List<Uri> = emptyList(),
+        removedImageIds: Set<Long> = emptySet(),
         onComplete: () -> Unit
     ) {
         viewModelScope.launch {
@@ -60,10 +81,19 @@ class JournalViewModel @Inject constructor(
                 mood = mood
             )
 
-            if (id != null && id > 0) {
+            val entryId = if (id != null && id > 0) {
                 repository.updateEntry(entry)
+                id
             } else {
                 repository.insertEntry(entry)
+            }
+
+            removedImageIds.forEach { imageId ->
+                repository.deleteImage(imageId)
+            }
+
+            if (newImageUris.isNotEmpty()) {
+                repository.saveImages(entryId, newImageUris)
             }
 
             onComplete()
@@ -72,6 +102,7 @@ class JournalViewModel @Inject constructor(
 
     fun deleteEntry(entryId: Long, onComplete: () -> Unit) {
         viewModelScope.launch {
+            repository.deleteAllImagesForEntry(entryId)
             repository.deleteEntry(entryId)
             onComplete()
         }

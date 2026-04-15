@@ -180,7 +180,9 @@ private fun ChecklistRow(
     var textValue by remember(item.id) { mutableStateOf(TextFieldValue(item.text)) }
 
     LaunchedEffect(item.text) {
-        textValue = TextFieldValue(item.text)
+        if (item.text != textValue.text) {
+            textValue = TextFieldValue(item.text)
+        }
     }
 
     Row(

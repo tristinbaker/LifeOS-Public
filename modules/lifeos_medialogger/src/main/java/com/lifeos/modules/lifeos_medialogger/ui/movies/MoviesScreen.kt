@@ -3,6 +3,8 @@ package com.lifeos.modules.lifeos_medialogger.ui.movies
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ExpandLess
@@ -22,7 +24,12 @@ import java.util.*
 fun MoviesScreen(
     movies: List<MediaItem>,
     onMovieClick: (Long) -> Unit,
-    onAddMovie: () -> Unit
+    onAddMovie: () -> Unit,
+    collapsedYears: Set<String> = emptySet(),
+    onCollapsedYearsChange: (Set<String>) -> Unit = {},
+    collapsedMonths: Set<String> = emptySet(),
+    onCollapsedMonthsChange: (Set<String>) -> Unit = {},
+    listState: LazyListState = rememberLazyListState()
 ) {
     // year -> monthKey ("2026-04") -> movies, sorted newest first within each month
     val moviesByYearMonth: Map<String, Map<String, List<MediaItem>>> = buildMap {
@@ -40,12 +47,10 @@ fun MoviesScreen(
         }
     }.mapValues { (_, monthMap) ->
         monthMap.mapValues { (_, items) ->
-            items.sortedByDescending { it.dateCompleted ?: 0L }
+            items.sortedWith(compareByDescending<MediaItem> { it.dateCompleted ?: 0L }.thenByDescending { it.createdAt })
         }.toSortedMap(compareByDescending { it })
     }.toSortedMap(compareByDescending { it })
 
-    var collapsedYears by rememberSaveable { mutableStateOf(emptySet<String>()) }
-    var collapsedMonths by rememberSaveable { mutableStateOf(emptySet<String>()) }
 
     Scaffold(
         floatingActionButton = {
@@ -55,6 +60,7 @@ fun MoviesScreen(
         }
     ) { padding ->
         LazyColumn(
+            state = listState,
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding),
@@ -70,10 +76,11 @@ fun MoviesScreen(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clickable {
-                                    collapsedYears = if (isYearCollapsed)
+                                    onCollapsedYearsChange(if (isYearCollapsed)
                                         collapsedYears - year
                                     else
                                         collapsedYears + year
+                                    )
                                 }
                                 .padding(vertical = 8.dp),
                             horizontalArrangement = Arrangement.SpaceBetween,
@@ -104,10 +111,11 @@ fun MoviesScreen(
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .clickable {
-                                            collapsedMonths = if (isMonthCollapsed)
+                                            onCollapsedMonthsChange(if (isMonthCollapsed)
                                                 collapsedMonths - monthCollapseKey
                                             else
                                                 collapsedMonths + monthCollapseKey
+                                            )
                                         }
                                         .padding(start = 16.dp, top = 4.dp, bottom = 4.dp),
                                     horizontalArrangement = Arrangement.SpaceBetween,

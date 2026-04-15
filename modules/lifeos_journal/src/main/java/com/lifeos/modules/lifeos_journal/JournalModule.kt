@@ -1,5 +1,6 @@
 package com.lifeos.modules.lifeos_journal
 
+import android.net.Uri
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
@@ -50,6 +51,9 @@ class JournalModule : LifeOSModule {
         ) {
             composable("list") {
                 BackHandler(onBack = onNavigateBack)
+                LaunchedEffect(Unit) {
+                    viewModel.loadImagesForEntry(null)
+                }
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
@@ -90,15 +94,21 @@ class JournalModule : LifeOSModule {
 
             composable("create") {
                 BackHandler(onBack = { moduleNavController.popBackStack() })
+                LaunchedEffect(Unit) {
+                    viewModel.loadImagesForEntry(null)
+                }
                 JournalEditorScreen(
                     entry = null,
+                    images = emptyList(),
                     onNavigateBack = { moduleNavController.popBackStack() },
-                    onSave = { id, date, content, mood, onComplete ->
+                    onSave = { id, date, content, mood, newImageUris, removedImageIds, onComplete ->
                         viewModel.saveEntry(
                             id = id,
                             date = date,
                             content = content,
                             mood = mood,
+                            newImageUris = newImageUris,
+                            removedImageIds = removedImageIds,
                             onComplete = onComplete
                         )
                     },
@@ -113,16 +123,23 @@ class JournalModule : LifeOSModule {
                 val entryId = backStackEntry.arguments?.getLong("entryId")
                 val entry = uiState.entries.find { it.id == entryId }
 
+                LaunchedEffect(entryId) {
+                    viewModel.loadImagesForEntry(entryId)
+                }
+
                 BackHandler(onBack = { moduleNavController.popBackStack() })
                 JournalEditorScreen(
                     entry = entry,
+                    images = uiState.currentEntryImages,
                     onNavigateBack = { moduleNavController.popBackStack() },
-                    onSave = { id, date, content, mood, onComplete ->
+                    onSave = { id, date, content, mood, newImageUris, removedImageIds, onComplete ->
                         viewModel.saveEntry(
                             id = id,
                             date = date,
                             content = content,
                             mood = mood,
+                            newImageUris = newImageUris,
+                            removedImageIds = removedImageIds,
                             onComplete = onComplete
                         )
                     },

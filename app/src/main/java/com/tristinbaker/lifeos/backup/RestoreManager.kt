@@ -25,6 +25,7 @@ object RestoreManager {
                 ?: error("Cannot open backup file")
 
             val coversDir = File(context.filesDir, "media_covers")
+            val journalImagesDir = File(context.filesDir, "journal_images")
             val dataStoreDir = File(context.filesDir, "datastore")
 
             inputStream.use { raw ->
@@ -37,6 +38,10 @@ object RestoreManager {
                                 entryName.startsWith("media_covers/") -> {
                                     coversDir.mkdirs()
                                     File(coversDir, File(entryName).name)
+                                }
+                                entryName.startsWith("journal_images/") -> {
+                                    journalImagesDir.mkdirs()
+                                    File(journalImagesDir, File(entryName).name)
                                 }
                                 entryName.startsWith("datastore/") -> {
                                     dataStoreDir.mkdirs()

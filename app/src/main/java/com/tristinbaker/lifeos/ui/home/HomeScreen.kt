@@ -22,8 +22,11 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.biometric.BiometricManager
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Backup
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.LockOpen
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.OutlinedButton
@@ -72,6 +75,7 @@ fun HomeScreen(
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
     var showBackupDialog by remember { mutableStateOf(false) }
+    var showBiometricDialog by remember { mutableStateOf(false) }
     var pendingRestoreUri by remember { mutableStateOf<Uri?>(null) }
     var showRestoreConfirm by remember { mutableStateOf(false) }
     var isRestoring by remember { mutableStateOf(false) }
@@ -80,6 +84,8 @@ fun HomeScreen(
         .collectAsStateWithLifecycle(initialValue = false)
     val folderUriString by BackupPreferences.folderUri(context)
         .collectAsStateWithLifecycle(initialValue = null)
+    val biometricEnabled by BackupPreferences.biometricEnabled(context)
+        .collectAsStateWithLifecycle(initialValue = false)
 
     val folderName = remember(folderUriString) {
         folderUriString?.let { DocumentFile.fromTreeUri(context, android.net.Uri.parse(it))?.name }
@@ -164,15 +170,27 @@ fun HomeScreen(
                     )
                 }
 
-                IconButton(onClick = { showBackupDialog = true }) {
-                    Icon(
-                        imageVector = Icons.Default.Backup,
-                        contentDescription = "Backup",
-                        tint = if (autoBackupEnabled)
-                            MaterialTheme.colorScheme.primary
-                        else
-                            MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
-                    )
+                Row {
+                    IconButton(onClick = { showBiometricDialog = true }) {
+                        Icon(
+                            imageVector = if (biometricEnabled) Icons.Default.Lock else Icons.Default.LockOpen,
+                            contentDescription = "Biometric lock",
+                            tint = if (biometricEnabled)
+                                MaterialTheme.colorScheme.primary
+                            else
+                                MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
+                        )
+                    }
+                    IconButton(onClick = { showBackupDialog = true }) {
+                        Icon(
+                            imageVector = Icons.Default.Backup,
+                            contentDescription = "Backup",
+                            tint = if (autoBackupEnabled)
+                                MaterialTheme.colorScheme.primary
+                            else
+                                MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
+                        )
+                    }
                 }
             }
 
@@ -222,6 +240,56 @@ fun HomeScreen(
             onImportBackup = {
                 showBackupDialog = false
                 restorePickerLauncher.launch(arrayOf("application/zip", "application/octet-stream", "*/*"))
+            }
+        )
+    }
+
+    if (showBiometricDialog) {
+        val isCurrentlyEnabled = biometricEnabled
+        val biometricAvailable = remember {
+            BiometricManager.from(context).canAuthenticate(
+                BiometricManager.Authenticators.BIOMETRIC_STRONG or
+                BiometricManager.Authenticators.DEVICE_CREDENTIAL
+            ) == BiometricManager.BIOMETRIC_SUCCESS
+        }
+
+        AlertDialog(
+            onDismissRequest = { showBiometricDialog = false },
+            title = { Text("App Lock") },
+            text = {
+                Column {
+                    Text(
+                        if (isCurrentlyEnabled)
+                            "Biometric lock is currently enabled. Disable it?"
+                        else
+                            "Enable biometric lock to require fingerprint or face authentication when opening the app.",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    if (!biometricAvailable && !isCurrentlyEnabled) {
+                        Spacer(Modifier.height(8.dp))
+                        Text(
+                            "No biometric hardware or credentials found on this device.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        scope.launch {
+                            BackupPreferences.setBiometricEnabled(context, !isCurrentlyEnabled)
+                        }
+                        showBiometricDialog = false
+                    },
+                    enabled = isCurrentlyEnabled || biometricAvailable
+                ) {
+                    Text(if (isCurrentlyEnabled) "Disable" else "Enable")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showBiometricDialog = false }) { Text("Cancel") }
             }
         )
     }

@@ -4,7 +4,9 @@ import android.content.Context
 import androidx.room.Room
 import com.lifeos.modules.lifeos_journal.data.local.JournalDatabase
 import com.lifeos.modules.lifeos_journal.data.local.JournalEntryDao
+import com.lifeos.modules.lifeos_journal.data.local.JournalImageDao
 import com.lifeos.modules.lifeos_journal.data.local.JournalSettingsDao
+import com.lifeos.modules.lifeos_journal.data.local.JOURNAL_MIGRATION_1_2
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -22,7 +24,9 @@ object JournalModule {
             context,
             JournalDatabase::class.java,
             "lifeos_journal.db"
-        ).build()
+        )
+            .addMigrations(JOURNAL_MIGRATION_1_2)
+            .build()
     }
 
     @Provides
@@ -35,5 +39,11 @@ object JournalModule {
     @Singleton
     fun provideJournalSettingsDao(database: JournalDatabase): JournalSettingsDao {
         return database.journalSettingsDao()
+    }
+
+    @Provides
+    @Singleton
+    fun provideJournalImageDao(database: JournalDatabase): JournalImageDao {
+        return database.journalImageDao()
     }
 }

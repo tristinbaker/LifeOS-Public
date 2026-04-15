@@ -69,8 +69,10 @@ class HabitReminderScheduler @Inject constructor(
     private fun workTag(habitId: Long) = "habit_reminder_$habitId"
 
     private fun calculateDelayUntil(reminderTimeMillis: Long, targetDayOfWeek: Int): Long {
-        val hour = (reminderTimeMillis / (60 * 60 * 1000)).toInt()
-        val minute = ((reminderTimeMillis / (60 * 1000)) % 60).toInt()
+        // reminderTimeMillis is a full epoch timestamp — extract hour/minute from it
+        val timeCal = Calendar.getInstance().apply { timeInMillis = reminderTimeMillis }
+        val hour = timeCal.get(Calendar.HOUR_OF_DAY)
+        val minute = timeCal.get(Calendar.MINUTE)
 
         val now = Calendar.getInstance()
         val target = Calendar.getInstance().apply {

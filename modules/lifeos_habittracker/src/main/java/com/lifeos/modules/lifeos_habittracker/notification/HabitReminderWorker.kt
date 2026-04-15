@@ -2,7 +2,9 @@ package com.lifeos.modules.lifeos_habittracker.notification
 
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.app.PendingIntent
 import android.content.Context
+import android.content.Intent
 import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.work.CoroutineWorker
@@ -36,11 +38,24 @@ class HabitReminderWorker(
     }
 
     private fun showNotification(habitName: String, habitId: Long) {
+        val tapIntent = Intent().apply {
+            setClassName(context.packageName, "com.tristinbaker.lifeos.MainActivity")
+            putExtra("module", "habits")
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+        }
+        val pendingIntent = PendingIntent.getActivity(
+            context,
+            habitId.toInt(),
+            tapIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.ic_menu_agenda)
             .setContentTitle("Habit reminder")
             .setContentText("Time to: $habitName")
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            .setContentIntent(pendingIntent)
             .setAutoCancel(true)
             .build()
 

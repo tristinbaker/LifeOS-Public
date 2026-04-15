@@ -30,6 +30,7 @@ object BackupManager {
     private val DB_SUFFIXES = listOf("", "-shm", "-wal")
 
     private const val COVERS_DIR = "media_covers"
+    private const val JOURNAL_IMAGES_DIR = "journal_images"
     private const val DATASTORE_DIR = "datastore"
     // DataStore files to include in the backup (by filename without path)
     private val DATASTORE_FILES = listOf("settings.preferences_pb")
@@ -51,6 +52,7 @@ object BackupManager {
                 ZipOutputStream(BufferedOutputStream(raw)).use { zip ->
                     writeDbFilesToZip(dbDir, zip)
                     writeCoversToZip(context, zip)
+                    writeJournalImagesToZip(context, zip)
                     writeDataStoreToZip(context, zip)
                     fileCount = DB_NAMES.sumOf { name ->
                         DB_SUFFIXES.count { suffix ->
@@ -89,6 +91,7 @@ object BackupManager {
                 ZipOutputStream(BufferedOutputStream(raw)).use { zip ->
                     writeDbFilesToZip(dbDir, zip)
                     writeCoversToZip(context, zip)
+                    writeJournalImagesToZip(context, zip)
                     writeDataStoreToZip(context, zip)
                     fileCount = DB_NAMES.sumOf { name ->
                         DB_SUFFIXES.count { suffix ->
@@ -121,6 +124,18 @@ object BackupManager {
         coversDir.listFiles()?.forEach { file ->
             if (file.isFile && file.length() > 0) {
                 zip.putNextEntry(ZipEntry("$COVERS_DIR/${file.name}"))
+                file.inputStream().use { it.copyTo(zip) }
+                zip.closeEntry()
+            }
+        }
+    }
+
+    private fun writeJournalImagesToZip(context: Context, zip: ZipOutputStream) {
+        val imagesDir = File(context.filesDir, JOURNAL_IMAGES_DIR)
+        if (!imagesDir.exists()) return
+        imagesDir.listFiles()?.forEach { file ->
+            if (file.isFile && file.length() > 0) {
+                zip.putNextEntry(ZipEntry("$JOURNAL_IMAGES_DIR/${file.name}"))
                 file.inputStream().use { it.copyTo(zip) }
                 zip.closeEntry()
             }

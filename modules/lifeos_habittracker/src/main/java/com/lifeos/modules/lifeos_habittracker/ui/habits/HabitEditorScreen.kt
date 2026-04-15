@@ -58,7 +58,13 @@ fun HabitEditorScreen(
     var timesPerWeek by remember(habit) { mutableStateOf(habit?.timesPerWeek ?: 3) }
     var reminderEnabled by remember(habit) { mutableStateOf(habit?.reminderEnabled ?: false) }
     var reminderTime by remember(habit) { mutableStateOf(habit?.reminderTime) }
-    var reminderDays by remember(habit) { mutableStateOf(habit?.reminderDays ?: "") }
+    // Default to all days selected so the UI clearly shows "selected = notify"
+    var reminderDays by remember(habit) {
+        mutableStateOf(
+            if (habit?.reminderDays.isNullOrEmpty()) "1,2,3,4,5,6,7"
+            else habit!!.reminderDays
+        )
+    }
     
     var showDatePicker by remember { mutableStateOf(false) }
     var showTimePicker by remember { mutableStateOf(false) }
@@ -274,8 +280,11 @@ fun HabitEditorScreen(
                 }
 
                 Spacer(modifier = Modifier.height(8.dp))
-                Text("Notify on days", style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(
+                    "Remind me on: (highlighted = will notify)",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
                 Spacer(modifier = Modifier.height(4.dp))
                 DaySelector(
                     selectedDays = reminderDays.split(",").mapNotNull { it.trim().toIntOrNull() }.toSet(),
@@ -405,7 +414,7 @@ private fun DaySelector(
     selectedDays: Set<Int>,
     onDaysChanged: (List<Int>) -> Unit
 ) {
-    val dayNames = listOf("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
+    val dayNames = listOf("Mo", "Tu", "We", "Th", "Fr", "Sa", "Su")
     
     Row(
         modifier = Modifier.fillMaxWidth(),
