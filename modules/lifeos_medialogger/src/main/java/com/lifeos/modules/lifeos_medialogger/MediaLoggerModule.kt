@@ -33,7 +33,9 @@ import com.lifeos.modules.lifeos_medialogger.ui.components.ImageSearchScreen
 import com.lifeos.modules.lifeos_medialogger.ui.components.RatingSelector
 import com.lifeos.modules.lifeos_medialogger.ui.games.GamesScreen
 import com.lifeos.modules.lifeos_medialogger.ui.movies.MoviesScreen
+import com.lifeos.modules.lifeos_medialogger.ui.stats.StatsDetailScreen
 import com.lifeos.modules.lifeos_medialogger.ui.stats.StatsScreen
+import com.lifeos.modules.lifeos_medialogger.ui.stats.StatsViewModel
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -59,6 +61,8 @@ fun MediaLoggerContent(
     viewModel: MediaLoggerViewModel,
     onNavigateBack: () -> Unit
 ) {
+    val statsViewModel: StatsViewModel = hiltViewModel()
+
     var currentScreen by remember { mutableStateOf("main") }
     var editItemId by remember { mutableStateOf<Long?>(null) }
     var addVolumeSeriesId by remember { mutableStateOf<Long?>(null) }
@@ -187,11 +191,22 @@ fun MediaLoggerContent(
                         onCollapsedMonthsChange = { gamesCollapsedMonths = it },
                         listState = gamesListState
                     )
-                    MediaTab.STATS -> StatsScreen()
+                    MediaTab.STATS -> StatsScreen(
+                        viewModel = statsViewModel,
+                        onTypeClick = { type ->
+                            statsViewModel.setDetailType(type)
+                            currentScreen = "stats_detail"
+                        }
+                    )
                 }
             }
         } else {
             when (currentScreen) {
+                "stats_detail" -> StatsDetailScreen(
+                    viewModel = statsViewModel,
+                    onNavigateBack = { currentScreen = "main" }
+                )
+
                 "image_search" -> ImageSearchScreen(
                     initialQuery = imageSearchQuery,
                     searchService = viewModel.imageSearchService,

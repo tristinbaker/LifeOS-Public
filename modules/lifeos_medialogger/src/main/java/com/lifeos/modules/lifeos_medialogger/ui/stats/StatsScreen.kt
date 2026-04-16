@@ -1,9 +1,11 @@
 package com.lifeos.modules.lifeos_medialogger.ui.stats
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
 import androidx.compose.material.icons.automirrored.filled.TrendingDown
 import androidx.compose.material.icons.automirrored.filled.TrendingFlat
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
@@ -17,6 +19,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.lifeos.modules.lifeos_medialogger.data.local.MediaType
 import com.lifeos.modules.lifeos_medialogger.domain.model.*
 import java.time.LocalDate
 import java.time.ZoneId
@@ -24,7 +27,8 @@ import java.time.format.DateTimeFormatter
 
 @Composable
 fun StatsScreen(
-    viewModel: StatsViewModel = hiltViewModel()
+    viewModel: StatsViewModel = hiltViewModel(),
+    onTypeClick: (MediaType) -> Unit = {}
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
 
@@ -51,7 +55,7 @@ fun StatsScreen(
 
         AvgPerMonthCard(stats.thisYearAvgPerMonth, stats.allTimeAvgPerMonth)
 
-        AllTimeTotalCard(stats.allTimeCounts)
+        AllTimeTotalCard(stats.allTimeCounts, onTypeClick)
 
         YearOverYearCard(stats.lastYearCounts, stats.thisYearCounts)
 
@@ -111,15 +115,43 @@ private fun AvgPerMonthCard(thisYear: AvgPerMonth, allTime: AvgPerMonth) {
 }
 
 @Composable
-private fun AllTimeTotalCard(counts: YearCounts) {
+private fun AllTimeTotalCard(counts: YearCounts, onTypeClick: (MediaType) -> Unit) {
     StatsCard(title = "All-Time Total", icon = Icons.Default.Inventory) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceEvenly
-        ) {
-            StatItem("Books", counts.books)
-            StatItem("Movies", counts.movies)
-            StatItem("Games", counts.games)
+        Column {
+            TypeTotalRow("Books",  counts.books,  MediaType.BOOK,  onTypeClick)
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
+            TypeTotalRow("Movies", counts.movies, MediaType.MOVIE, onTypeClick)
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
+            TypeTotalRow("Games",  counts.games,  MediaType.GAME,  onTypeClick)
+        }
+    }
+}
+
+@Composable
+private fun TypeTotalRow(label: String, count: Int, type: MediaType, onClick: (MediaType) -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick(type) }
+            .padding(vertical = 10.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(label, style = MaterialTheme.typography.bodyMedium)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                "$count",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary
+            )
+            Spacer(Modifier.width(4.dp))
+            Icon(
+                Icons.AutoMirrored.Filled.ArrowForwardIos,
+                contentDescription = "View $label stats",
+                modifier = Modifier.size(14.dp),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }
@@ -322,7 +354,7 @@ private fun RewatchRegameCard(counts: RewatchRegameCounts) {
 }
 
 @Composable
-private fun StatsCard(
+internal fun StatsCard(
     title: String,
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     content: @Composable ColumnScope.() -> Unit

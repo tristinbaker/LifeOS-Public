@@ -543,12 +543,24 @@ private fun WeatherCard(
                             color = MaterialTheme.colorScheme.onPrimaryContainer
                         )
                         Spacer(modifier = Modifier.height(4.dp))
-                        if (weatherData.airQualityLabel != null) {
-                            Text(
-                                text = "AQ: ${weatherData.airQualityLabel}",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer
-                            )
+                        if (weatherData.airQuality != null) {
+                            Box(
+                                modifier = Modifier
+                                    .background(
+                                        brush = androidx.compose.ui.graphics.Brush.horizontalGradient(
+                                            colors = getAqiGradient(weatherData.airQuality)
+                                        ),
+                                        shape = RoundedCornerShape(4.dp)
+                                    )
+                                    .padding(horizontal = 8.dp, vertical = 2.dp)
+                            ) {
+                                Text(
+                                    text = "AQ: ${weatherData.airQuality}",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = androidx.compose.ui.graphics.Color.White,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
                         } else {
                             Text(
                                 text = "AQ: N/A",
@@ -584,6 +596,17 @@ private fun getWeatherIcon(weatherCode: Int): androidx.compose.ui.graphics.vecto
         71, 73, 75, 77, 85, 86 -> Icons.Default.AcUnit
         95, 96, 99 -> Icons.Default.Thunderstorm
         else -> Icons.Default.WbSunny
+    }
+}
+
+private fun getAqiGradient(aqi: Int): List<androidx.compose.ui.graphics.Color> {
+    return when {
+        aqi <= 20 -> listOf(androidx.compose.ui.graphics.Color(0xFF4CAF50), androidx.compose.ui.graphics.Color(0xFF8BC34A))
+        aqi <= 40 -> listOf(androidx.compose.ui.graphics.Color(0xFF8BC34A), androidx.compose.ui.graphics.Color(0xFFCDDC39))
+        aqi <= 60 -> listOf(androidx.compose.ui.graphics.Color(0xFFFFEB3B), androidx.compose.ui.graphics.Color(0xFFFFC107))
+        aqi <= 80 -> listOf(androidx.compose.ui.graphics.Color(0xFFFFC107), androidx.compose.ui.graphics.Color(0xFFFF9800))
+        aqi <= 100 -> listOf(androidx.compose.ui.graphics.Color(0xFFFF9800), androidx.compose.ui.graphics.Color(0xFFF44336))
+        else -> listOf(androidx.compose.ui.graphics.Color(0xFFF44336), androidx.compose.ui.graphics.Color(0xFFB71C1C))
     }
 }
 

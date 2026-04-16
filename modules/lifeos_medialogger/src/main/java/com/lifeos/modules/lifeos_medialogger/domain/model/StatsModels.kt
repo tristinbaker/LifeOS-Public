@@ -1,5 +1,7 @@
 package com.lifeos.modules.lifeos_medialogger.domain.model
 
+import com.lifeos.modules.lifeos_medialogger.data.local.MediaType
+
 data class MediaStats(
     val thisYearCounts: YearCounts = YearCounts(),
     val allTimeCounts: YearCounts = YearCounts(),
@@ -51,4 +53,22 @@ data class MonthCount(
 data class RewatchRegameCounts(
     val movies: Int = 0,
     val games: Int = 0
+)
+
+data class DetailStats(
+    val type: MediaType,
+    val year: Int?,                                     // null = all time
+    val totalCount: Int,
+    val avgRating: Float?,
+    val ratingDistribution: Map<Float, Int>,            // 0.5…5.0 → count, only used ratings
+    val topRated: TopRatedItem?,
+    val mostActiveMonth: MonthCount,
+    val rewatchCount: Int,                              // 0 for books
+    val rewatchPercent: Float,                          // pre-computed, 0f for books
+    val platformBreakdown: List<Pair<String, Int>>,     // games only, sorted desc by count
+    val platinumCount: Int,                             // games only
+    val hundredPercentCount: Int,                       // games only
+    val topAuthors: List<Pair<String, Int>>,            // books only, sorted desc by count
+    val items: List<MediaItem>,                         // filtered + sorted by dateCompleted DESC
+    val availableYears: List<Int>                       // from all items (not filtered), descending
 )
