@@ -4,7 +4,9 @@ import com.lifeos.modules.lifeos_habittracker.data.local.HabitCheckIn
 import com.lifeos.modules.lifeos_habittracker.data.local.HabitDao
 import com.lifeos.modules.lifeos_habittracker.data.local.HabitEntity
 import kotlinx.coroutines.flow.Flow
+import java.time.Instant
 import java.time.LocalDate
+import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -52,12 +54,18 @@ class HabitsRepository @Inject constructor(
         val habit = habitDao.getHabitById(habitId) ?: return 0
         var streak = 0
         var currentDate = LocalDate.now()
-        
-        // Check if habit applies to today
-        if (!habitAppliesToDate(habit, currentDate)) {
+
+        // If today applies but isn't checked in yet, start from yesterday
+        // so the streak isn't reset until the day ends without a check-in
+        if (habitAppliesToDate(habit, currentDate)) {
+            val todayStr = currentDate.format(dateFormatter)
+            if (habitDao.getCheckInForDate(habitId, todayStr) == null) {
+                currentDate = currentDate.minusDays(1)
+            }
+        } else {
             currentDate = currentDate.minusDays(1)
         }
-        
+
         while (true) {
             if (!habitAppliesToDate(habit, currentDate)) {
                 currentDate = currentDate.minusDays(1)
@@ -93,8 +101,10 @@ class HabitsRepository @Inject constructor(
     }
 
     fun daysSinceStart(habit: HabitEntity): Int {
-        val startDate = LocalDate.ofEpochDay(habit.createdAt / (24 * 60 * 60 * 1000))
+        val startDate = Instant.ofEpochMilli(habit.createdAt)
+            .atZone(ZoneId.systemDefault())
+            .toLocalDate()
         val today = LocalDate.now()
-        return (today.toEpochDay() - startDate.toEpochDay()).toInt().coerceAtLeast(1)
+        return (today.toEpochDay() - startDate.toEpochDay() + 1).toInt().coerceAtLeast(1)
     }
 }
