@@ -542,6 +542,7 @@ private fun WeatherCard(
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onPrimaryContainer
                         )
+                        Spacer(modifier = Modifier.height(4.dp))
                         if (weatherData.airQualityLabel != null) {
                             Text(
                                 text = "AQ: ${weatherData.airQualityLabel}",

@@ -141,7 +141,7 @@ private fun HabitCard(
                 Spacer(modifier = Modifier.height(4.dp))
 
                 Text(
-                    text = getFrequencyText(habitStats.habit.frequency, habitStats.habit.daysOfWeek),
+                    text = getFrequencyText(habitStats.habit.frequency, habitStats.habit.daysOfWeek, habitStats.habit.timesPerWeek),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                 )
@@ -196,7 +196,7 @@ private fun HabitCard(
     }
 }
 
-private fun getFrequencyText(frequency: HabitFrequency, daysOfWeek: String): String {
+private fun getFrequencyText(frequency: HabitFrequency, daysOfWeek: String, timesPerWeek: Int = 7): String {
     return when (frequency) {
         HabitFrequency.DAILY -> "Daily"
         HabitFrequency.SPECIFIC_DAYS -> {
@@ -208,6 +208,6 @@ private fun getFrequencyText(frequency: HabitFrequency, daysOfWeek: String): Str
                 .mapNotNull { dayNames[it.trim()] }
                 .joinToString(", ")
         }
-        HabitFrequency.TIMES_PER_WEEK -> "Times per week"
+        HabitFrequency.TIMES_PER_WEEK -> "$timesPerWeek ${if (timesPerWeek == 1) "Time" else "Times"} Per Week"
     }
 }

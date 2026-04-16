@@ -69,22 +69,34 @@ class HabitsViewModel @Inject constructor(
         onComplete: () -> Unit
     ) {
         viewModelScope.launch {
-            val habit = HabitEntity(
-                id = id ?: 0,
-                name = name,
-                description = description,
-                frequency = frequency,
-                daysOfWeek = daysOfWeek,
-                timesPerWeek = timesPerWeek,
-                reminderEnabled = reminderEnabled,
-                reminderTime = if (reminderEnabled) reminderTime else null,
-                reminderDays = if (reminderEnabled) reminderDays else ""
-            )
-
             val savedId: Long = if (id != null && id > 0) {
+                val existing = repository.getHabitById(id)
+                val habit = HabitEntity(
+                    id = id,
+                    name = name,
+                    description = description,
+                    frequency = frequency,
+                    daysOfWeek = daysOfWeek,
+                    timesPerWeek = timesPerWeek,
+                    reminderEnabled = reminderEnabled,
+                    reminderTime = if (reminderEnabled) reminderTime else null,
+                    reminderDays = if (reminderEnabled) reminderDays else "",
+                    createdAt = existing?.createdAt ?: System.currentTimeMillis()
+                )
                 repository.updateHabit(habit)
                 id
             } else {
+                val habit = HabitEntity(
+                    id = 0,
+                    name = name,
+                    description = description,
+                    frequency = frequency,
+                    daysOfWeek = daysOfWeek,
+                    timesPerWeek = timesPerWeek,
+                    reminderEnabled = reminderEnabled,
+                    reminderTime = if (reminderEnabled) reminderTime else null,
+                    reminderDays = if (reminderEnabled) reminderDays else ""
+                )
                 repository.insertHabit(habit)
             }
 
