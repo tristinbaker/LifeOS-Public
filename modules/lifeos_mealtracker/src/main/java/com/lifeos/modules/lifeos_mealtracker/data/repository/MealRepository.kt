@@ -16,7 +16,7 @@ class MealRepository @Inject constructor(
     private val mealEntryDao: MealEntryDao
 ) {
     fun getMealsByDate(date: LocalDate): Flow<List<MealEntry>> =
-        mealEntryDao.getMealsByDate(date).map { entities ->
+        mealEntryDao.getMealsByDate(date.toString()).map { entities ->
             entities.map { it.toDomain() }
         }
 
@@ -43,7 +43,7 @@ class MealRepository @Inject constructor(
         mealEntryDao.deleteMeal(meal.toEntity())
 
     fun getDailyTotals(date: LocalDate): Flow<DailyTotals> =
-        mealEntryDao.getMealsByDate(date).map { entities ->
+        mealEntryDao.getMealsByDate(date.toString()).map { entities ->
             val meals = entities.map { it.toDomain() }
             DailyTotals(
                 date = date,
@@ -56,5 +56,5 @@ class MealRepository @Inject constructor(
         }
 
     suspend fun deleteMealsByDate(date: LocalDate) =
-        mealEntryDao.deleteMealsByDate(date)
+        mealEntryDao.deleteMealsByDate(date.toString())
 }

@@ -5,6 +5,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
@@ -16,11 +18,13 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import com.lifeos.modules.lifeos_notes.data.local.ChecklistItem
+import kotlinx.coroutines.launch
 import org.json.JSONArray
 import org.json.JSONObject
 import java.util.UUID
@@ -56,14 +60,17 @@ fun serializeChecklist(items: List<ChecklistItem>): String {
     return array.toString()
 }
 
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 fun ChecklistEditor(
     checklistJson: String,
     onChecklistChange: (String) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    pendingNewItemText: String = "",
+    onPendingNewItemTextChange: (String) -> Unit = {}
 ) {
     var items by remember(checklistJson) { mutableStateOf(parseChecklist(checklistJson)) }
-    var newItemText by remember { mutableStateOf("") }
+    var newItemText by remember { mutableStateOf(pendingNewItemText) }
 
     LaunchedEffect(checklistJson) {
         items = parseChecklist(checklistJson)
@@ -75,7 +82,7 @@ fun ChecklistEditor(
                 .weight(1f)
                 .padding(horizontal = 8.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
-            contentPadding = PaddingValues(vertical = 8.dp)
+            contentPadding = PaddingValues(top = 8.dp, bottom = 80.dp)
         ) {
             itemsIndexed(items) { index, item ->
                 ChecklistRow(
@@ -111,8 +118,11 @@ fun ChecklistEditor(
             }
 
             item {
+                val addItemBringIntoViewRequester = remember { BringIntoViewRequester() }
+                val addItemScope = rememberCoroutineScope()
                 Row(
                     modifier = Modifier
+                        .bringIntoViewRequester(addItemBringIntoViewRequester)
                         .fillMaxWidth()
                         .padding(vertical = 4.dp),
                     verticalAlignment = Alignment.CenterVertically
@@ -126,10 +136,11 @@ fun ChecklistEditor(
                     Spacer(modifier = Modifier.width(12.dp))
                     BasicTextField(
                         value = newItemText,
-                        onValueChange = { newItemText = it },
+                        onValueChange = { newItemText = it; onPendingNewItemTextChange(it) },
                         modifier = Modifier
                             .weight(1f)
-                            .padding(vertical = 8.dp),
+                            .padding(vertical = 8.dp)
+                            .onFocusChanged { if (it.isFocused) addItemScope.launch { addItemBringIntoViewRequester.bringIntoView() } },
                         textStyle = MaterialTheme.typography.bodyLarge.copy(
                             color = MaterialTheme.colorScheme.onSurface
                         ),
@@ -168,6 +179,7 @@ fun ChecklistEditor(
     }
 }
 
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 private fun ChecklistRow(
     item: ChecklistItem,
@@ -178,6 +190,8 @@ private fun ChecklistRow(
     onDone: () -> Unit
 ) {
     var textValue by remember(item.id) { mutableStateOf(TextFieldValue(item.text)) }
+    val bringIntoViewRequester = remember { BringIntoViewRequester() }
+    val coroutineScope = rememberCoroutineScope()
 
     LaunchedEffect(item.text) {
         if (item.text != textValue.text) {
@@ -187,6 +201,7 @@ private fun ChecklistRow(
 
     Row(
         modifier = Modifier
+            .bringIntoViewRequester(bringIntoViewRequester)
             .fillMaxWidth()
             .clip(RoundedCornerShape(8.dp))
             .background(
@@ -209,11 +224,13 @@ private fun ChecklistRow(
         Box(modifier = Modifier.weight(1f)) {
             BasicTextField(
                 value = textValue,
-                onValueChange = { 
+                onValueChange = {
                     textValue = it
                     onTextChange(it.text)
                 },
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .onFocusChanged { if (it.isFocused) coroutineScope.launch { bringIntoViewRequester.bringIntoView() } },
                 textStyle = MaterialTheme.typography.bodyLarge.copy(
                     color = if (item.isChecked)
                         MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)

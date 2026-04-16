@@ -8,6 +8,7 @@ import com.lifeos.modules.lifeos_mealtracker.data.repository.UserSettings
 import com.lifeos.modules.lifeos_mealtracker.domain.model.DailyTotals
 import com.lifeos.modules.lifeos_mealtracker.domain.model.MealEntry
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.time.LocalDate
@@ -19,6 +20,7 @@ data class DashboardUiState(
     val settings: UserSettings = UserSettings()
 )
 
+@OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class DashboardViewModel @Inject constructor(
     private val mealRepository: MealRepository,
@@ -38,7 +40,7 @@ class DashboardViewModel @Inject constructor(
                 settings = settings
             )
         }
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), DashboardUiState())
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, DashboardUiState())
 
     fun deleteMeal(meal: MealEntry) {
         viewModelScope.launch {

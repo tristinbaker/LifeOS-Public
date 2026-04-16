@@ -58,7 +58,7 @@ class ShameReminderService : Service() {
             val settings = settingsRepository.settings.first()
             val today = LocalDate.now()
 
-            val meals = database.mealEntryDao().getMealsByDate(today).first()
+            val meals = database.mealEntryDao().getMealsByDate(today.toString()).first()
             val totalCalories = meals.sumOf { it.calories }
 
             if (totalCalories > settings.dailyCalorieGoal) {

@@ -21,7 +21,11 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import com.lifeos.modules.lifeos_notes.data.local.NoteEntity
+import com.lifeos.modules.lifeos_notes.data.local.ChecklistItem
 import com.lifeos.modules.lifeos_notes.ui.components.ChecklistEditor
+import com.lifeos.modules.lifeos_notes.ui.components.parseChecklist
+import com.lifeos.modules.lifeos_notes.ui.components.serializeChecklist
+import java.util.UUID
 import java.time.Instant
 import java.time.LocalDateTime
 import java.time.ZoneId
@@ -52,6 +56,7 @@ fun NoteEditorScreen(
         }
     }
     var checklistJson by remember(note) { mutableStateOf(note?.checklistJson ?: "[]") }
+    var pendingChecklistItemText by remember { mutableStateOf("") }
     var isPinned by remember(note) { mutableStateOf(note?.isPinned ?: false) }
     var notificationTime by remember(note) { mutableStateOf(note?.notificationTime) }
     var showDatePicker by remember { mutableStateOf(false) }
@@ -127,7 +132,9 @@ fun NoteEditorScreen(
                 ChecklistEditor(
                     checklistJson = checklistJson,
                     onChecklistChange = { checklistJson = it },
-                    modifier = Modifier.fillMaxSize()
+                    modifier = Modifier.fillMaxSize(),
+                    pendingNewItemText = pendingChecklistItemText,
+                    onPendingNewItemTextChange = { pendingChecklistItemText = it }
                 )
             } else {
                 OutlinedTextField(
@@ -183,7 +190,20 @@ fun NoteEditorScreen(
         }
 
         Button(
-            onClick = { onSave(title.text, content.text, checklistJson, isPinned, notificationTime); onNavigateBack() },
+            onClick = {
+                val finalJson = if (pendingChecklistItemText.isNotBlank()) {
+                    val items = parseChecklist(checklistJson) + ChecklistItem(
+                        id = UUID.randomUUID().toString(),
+                        text = pendingChecklistItemText.trim(),
+                        isChecked = false
+                    )
+                    serializeChecklist(items)
+                } else {
+                    checklistJson
+                }
+                onSave(title.text, content.text, finalJson, isPinned, notificationTime)
+                onNavigateBack()
+            },
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp)

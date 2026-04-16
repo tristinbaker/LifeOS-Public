@@ -7,8 +7,8 @@ import java.time.LocalDate
 
 @Dao
 interface MealEntryDao {
-    @Query("SELECT * FROM lifeos_mealtracker_meal_entries WHERE date = :date ORDER BY createdAt ASC")
-    fun getMealsByDate(date: LocalDate): Flow<List<MealEntryEntity>>
+    @Query("SELECT * FROM lifeos_mealtracker_meal_entries WHERE date = :dateStr ORDER BY createdAt ASC")
+    fun getMealsByDate(dateStr: String): Flow<List<MealEntryEntity>>
 
     @Query("SELECT * FROM lifeos_mealtracker_meal_entries WHERE date BETWEEN :startDate AND :endDate ORDER BY date ASC, createdAt ASC")
     fun getMealsBetweenDates(startDate: LocalDate, endDate: LocalDate): Flow<List<MealEntryEntity>>
@@ -28,6 +28,6 @@ interface MealEntryDao {
     @Delete
     suspend fun deleteMeal(meal: MealEntryEntity)
 
-    @Query("DELETE FROM lifeos_mealtracker_meal_entries WHERE date = :date")
-    suspend fun deleteMealsByDate(date: LocalDate)
+    @Query("DELETE FROM lifeos_mealtracker_meal_entries WHERE date = :dateStr")
+    suspend fun deleteMealsByDate(dateStr: String)
 }
