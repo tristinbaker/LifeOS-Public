@@ -3,6 +3,7 @@ package com.lifeos.modules.lifeos_medialogger.ui.books
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
@@ -34,12 +35,14 @@ fun AddBookScreen(
     isGame: Boolean = false,
     isSeries: Boolean = false,
     existingIsRewatch: Boolean = false,
+    existingHasPlatinum: Boolean = false,
+    existingHas100Percent: Boolean = false,
     selectedCoverUrl: String? = null,
     selectedTitle: String? = null,
     onSearchCover: ((currentTitle: String) -> Unit)? = null,
     onNavigateBack: () -> Unit,
     onNavigateBackWithDelete: (() -> Unit)? = null,
-    onSave: (title: String, coverUrl: String?, rating: Float?, dateCompleted: Long?, notes: String?, platform: String?, author: String?, isRewatch: Boolean) -> Unit
+    onSave: (title: String, coverUrl: String?, rating: Float?, dateCompleted: Long?, notes: String?, platform: String?, author: String?, isRewatch: Boolean, hasPlatinum: Boolean, has100Percent: Boolean) -> Unit
 ) {
     var title by remember { mutableStateOf(existingTitle) }
     var coverUrl by remember { mutableStateOf(existingCoverUrl) }
@@ -50,6 +53,8 @@ fun AddBookScreen(
     var notes by remember { mutableStateOf(existingNotes) }
     var selectedDate by remember { mutableStateOf(existingDate) }
     var isRewatch by remember { mutableStateOf(existingIsRewatch) }
+    var hasPlatinum by remember { mutableStateOf(existingHasPlatinum) }
+    var has100Percent by remember { mutableStateOf(existingHas100Percent) }
     var showDatePicker by remember { mutableStateOf(false) }
 
     LaunchedEffect(selectedCoverUrl) {
@@ -79,6 +84,7 @@ fun AddBookScreen(
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
             .padding(16.dp)
+            .navigationBarsPadding()
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -212,6 +218,25 @@ fun AddBookScreen(
             }
         }
 
+        if (isGame) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text("Platinum?", style = MaterialTheme.typography.bodyLarge)
+                Checkbox(checked = hasPlatinum, onCheckedChange = { hasPlatinum = it })
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text("100%?", style = MaterialTheme.typography.bodyLarge)
+                Checkbox(checked = has100Percent, onCheckedChange = { has100Percent = it })
+            }
+        }
+
         Spacer(modifier = Modifier.height(16.dp))
 
         Button(
@@ -224,7 +249,9 @@ fun AddBookScreen(
                     notes.ifBlank { null },
                     platform.ifBlank { null },
                     author.ifBlank { null },
-                    isRewatch
+                    isRewatch,
+                    hasPlatinum,
+                    has100Percent
                 )
             },
             enabled = title.isNotBlank(),

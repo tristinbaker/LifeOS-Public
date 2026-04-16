@@ -208,7 +208,7 @@ fun MediaLoggerContent(
                     selectedTitle = pendingTitle,
                     onSearchCover = { q -> goToImageSearch(if (q.isBlank()) "cover" else "$q cover", "add_book") },
                     onNavigateBack = { goToMain() },
-                    onSave = { title, coverUrl, rating, date, notes, _, author, _ ->
+                    onSave = { title, coverUrl, rating, date, notes, _, author, _, _, _ ->
                         viewModel.addMediaItem(title, coverUrl, rating, date, notes, MediaType.BOOK, author = author)
                         goToMain()
                     }
@@ -229,7 +229,7 @@ fun MediaLoggerContent(
                         onSearchCover = { q -> goToImageSearch(q.ifBlank { "book cover" }, "edit_book") },
                         onNavigateBack = { goToMain() },
                         onNavigateBackWithDelete = { viewModel.deleteMediaItem(id); goToMain() },
-                        onSave = { title, coverUrl, rating, date, notes, _, author, _ ->
+                        onSave = { title, coverUrl, rating, date, notes, _, author, _, _, _ ->
                             viewModel.updateMediaItem(id, title, coverUrl, rating, date, notes, author = author)
                             goToMain()
                         }
@@ -242,7 +242,7 @@ fun MediaLoggerContent(
                     selectedTitle = pendingTitle,
                     onSearchCover = { q -> goToImageSearch(if (q.isBlank()) "movie poster" else "$q movie poster", "add_movie") },
                     onNavigateBack = { goToMain() },
-                    onSave = { title, coverUrl, rating, date, notes, _, _, isRewatch ->
+                    onSave = { title, coverUrl, rating, date, notes, _, _, isRewatch, _, _ ->
                         viewModel.addMediaItem(title, coverUrl, rating, date, notes, MediaType.MOVIE, isRewatch = isRewatch)
                         goToMain()
                     }
@@ -264,7 +264,7 @@ fun MediaLoggerContent(
                         onSearchCover = { q -> goToImageSearch(if (q.isBlank()) "movie poster" else "$q movie poster", "edit_movie") },
                         onNavigateBack = { goToMain() },
                         onNavigateBackWithDelete = { viewModel.deleteMediaItem(id); goToMain() },
-                        onSave = { title, coverUrl, rating, date, notes, _, _, isRewatch ->
+                        onSave = { title, coverUrl, rating, date, notes, _, _, isRewatch, _, _ ->
                             viewModel.updateMediaItem(id, title, coverUrl, rating, date, notes, isRewatch = isRewatch)
                             goToMain()
                         }
@@ -277,8 +277,8 @@ fun MediaLoggerContent(
                     selectedTitle = pendingTitle,
                     onSearchCover = { q -> goToImageSearch(if (q.isBlank()) "cover" else "$q cover", "add_game") },
                     onNavigateBack = { goToMain() },
-                    onSave = { title, coverUrl, rating, date, notes, platform, _, isRewatch ->
-                        viewModel.addMediaItem(title, coverUrl, rating, date, notes, MediaType.GAME, platform = platform, isRewatch = isRewatch)
+                    onSave = { title, coverUrl, rating, date, notes, platform, _, isRewatch, hasPlatinum, has100Percent ->
+                        viewModel.addMediaItem(title, coverUrl, rating, date, notes, MediaType.GAME, platform = platform, isRewatch = isRewatch, hasPlatinum = hasPlatinum, has100Percent = has100Percent)
                         goToMain()
                     }
                 )
@@ -296,12 +296,14 @@ fun MediaLoggerContent(
                         existingNotes = item?.notes ?: "",
                         existingPlatform = item?.platform ?: "",
                         existingIsRewatch = item?.isRewatch ?: false,
+                        existingHasPlatinum = item?.hasPlatinum ?: false,
+                        existingHas100Percent = item?.has100Percent ?: false,
                         selectedCoverUrl = pendingCoverUrl,
                         onSearchCover = { q -> goToImageSearch(q.ifBlank { "game cover art" }, "edit_game") },
                         onNavigateBack = { goToMain() },
                         onNavigateBackWithDelete = { viewModel.deleteMediaItem(id); goToMain() },
-                        onSave = { title, coverUrl, rating, date, notes, platform, _, isRewatch ->
-                            viewModel.updateMediaItem(id, title, coverUrl, rating, date, notes, platform = platform, isRewatch = isRewatch)
+                        onSave = { title, coverUrl, rating, date, notes, platform, _, isRewatch, hasPlatinum, has100Percent ->
+                            viewModel.updateMediaItem(id, title, coverUrl, rating, date, notes, platform = platform, isRewatch = isRewatch, hasPlatinum = hasPlatinum, has100Percent = has100Percent)
                             goToMain()
                         }
                     )
@@ -313,7 +315,7 @@ fun MediaLoggerContent(
                     selectedTitle = pendingTitle,
                     onSearchCover = { q -> goToImageSearch(if (q.isBlank()) "cover" else "$q cover", "add_series") },
                     onNavigateBack = { goToMain() },
-                    onSave = { title, coverUrl, _, date, _, _, author, _ ->
+                    onSave = { title, coverUrl, _, date, _, _, author, _, _, _ ->
                         viewModel.addMangaSeries(title, coverUrl, author, date)
                         goToMain()
                     }
@@ -333,7 +335,7 @@ fun MediaLoggerContent(
                         onSearchCover = { q -> goToImageSearch(q.ifBlank { "manga cover" }, "edit_series") },
                         onNavigateBack = { goToMain() },
                         onNavigateBackWithDelete = { viewModel.deleteMangaSeries(id); goToMain() },
-                        onSave = { title, coverUrl, _, date, _, _, author, _ ->
+                        onSave = { title, coverUrl, _, date, _, _, author, _, _, _ ->
                             viewModel.updateMangaSeries(id, title, coverUrl, author, date)
                             goToMain()
                         }

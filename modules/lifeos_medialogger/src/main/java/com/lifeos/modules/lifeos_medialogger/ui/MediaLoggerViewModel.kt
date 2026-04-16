@@ -114,7 +114,9 @@ class MediaLoggerViewModel @Inject constructor(
         type: MediaType,
         platform: String? = null,
         author: String? = null,
-        isRewatch: Boolean = false
+        isRewatch: Boolean = false,
+        hasPlatinum: Boolean = false,
+        has100Percent: Boolean = false
     ) {
         viewModelScope.launch {
             val localPath = coverUrl?.let { imageCacheService.downloadAndCacheImage(it) }
@@ -128,7 +130,9 @@ class MediaLoggerViewModel @Inject constructor(
                 type = type,
                 platform = platform,
                 author = author,
-                isRewatch = isRewatch
+                isRewatch = isRewatch,
+                hasPlatinum = hasPlatinum,
+                has100Percent = has100Percent
             )
             repository.insertMediaItem(item)
         }
@@ -143,7 +147,9 @@ class MediaLoggerViewModel @Inject constructor(
         notes: String?,
         platform: String? = null,
         author: String? = null,
-        isRewatch: Boolean = false
+        isRewatch: Boolean = false,
+        hasPlatinum: Boolean = false,
+        has100Percent: Boolean = false
     ) {
         viewModelScope.launch {
             val existing = repository.getMediaItemById(id) ?: return@launch
@@ -163,7 +169,9 @@ class MediaLoggerViewModel @Inject constructor(
                 notes = notes,
                 platform = platform,
                 author = author,
-                isRewatch = isRewatch
+                isRewatch = isRewatch,
+                hasPlatinum = hasPlatinum,
+                has100Percent = has100Percent
             ))
         }
     }
@@ -288,6 +296,8 @@ private fun MediaItemEntity.toMediaItem() = MediaItem(
     platform = platform,
     author = author,
     isRewatch = isRewatch,
+    hasPlatinum = hasPlatinum,
+    has100Percent = has100Percent,
     createdAt = createdAt
 )
 

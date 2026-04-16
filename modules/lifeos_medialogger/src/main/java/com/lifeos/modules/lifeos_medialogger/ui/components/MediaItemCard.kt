@@ -20,9 +20,12 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.foundation.Image
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
+import com.lifeos.modules.lifeos_medialogger.R
 import com.lifeos.modules.lifeos_medialogger.domain.model.MediaItem
 import java.io.File
 import java.text.SimpleDateFormat
@@ -77,6 +80,20 @@ fun MediaItemCard(
                             contentDescription = "Rewatch/Replay",
                             modifier = Modifier.size(16.dp),
                             tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    if (item.hasPlatinum) {
+                        Image(
+                            painter = painterResource(R.drawable.platinum),
+                            contentDescription = "Platinum",
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                    if (item.has100Percent) {
+                        Text(
+                            text = "100%",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.primary
                         )
                     }
                 }
