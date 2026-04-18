@@ -18,6 +18,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.lifeos.modules.lifeos_mealtracker.domain.model.MealType
 import com.lifeos.modules.lifeos_mealtracker.domain.model.SavedMeal
+import com.lifeos.modules.lifeos_mealtracker.domain.model.StoredItem
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
@@ -26,6 +27,8 @@ import java.time.format.DateTimeFormatter
 fun AddMealScreen(
     mealId: Long?,
     savedMealId: Long? = null,
+    storedItemId: Long? = null,
+    storedItemQuantity: Double? = null,
     onNavigateBack: () -> Unit,
     onShowShame: (Int) -> Unit,
     viewModel: AddMealViewModel = hiltViewModel()
@@ -33,6 +36,7 @@ fun AddMealScreen(
     val uiState by viewModel.uiState.collectAsState()
     var showDatePicker by remember { mutableStateOf(false) }
     var showSavedMeals by remember { mutableStateOf(false) }
+    var showStoredItems by remember { mutableStateOf(false) }
 
     LaunchedEffect(mealId) {
         if (mealId != null) {
@@ -43,6 +47,12 @@ fun AddMealScreen(
     LaunchedEffect(savedMealId) {
         if (savedMealId != null) {
             viewModel.loadSavedMeal(savedMealId)
+        }
+    }
+
+    LaunchedEffect(storedItemId) {
+        if (storedItemId != null) {
+            viewModel.loadStoredItem(storedItemId, storedItemQuantity ?: 1.0)
         }
     }
 
@@ -170,6 +180,50 @@ fun AddMealScreen(
                             }
                         }
                     }
+                }
+            }
+
+            if (uiState.storedItems.isNotEmpty()) {
+                item {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Stored Items",
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        TextButton(onClick = { showStoredItems = !showStoredItems }) {
+                            Text(if (showStoredItems) "Hide" else "Show")
+                        }
+                    }
+                }
+
+                if (showStoredItems) {
+                    item {
+                        LazyRow(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            items(uiState.storedItems) { item ->
+                                StoredItemChip(
+                                    item = item,
+                                    onClick = { viewModel.loadStoredItem(item.id) }
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (uiState.storedItemId != null) {
+                item {
+                    StoredItemQuantityInput(
+                        quantity = uiState.quantity,
+                        onQuantityChange = { viewModel.updateQuantity(it) },
+                        modifier = Modifier.fillMaxWidth()
+                    )
                 }
             }
 
@@ -336,4 +390,91 @@ fun SavedMealChip(
             }
         }
     )
+}
+
+@Composable
+fun StoredItemChip(
+    item: StoredItem,
+    onClick: () -> Unit
+) {
+    AssistChip(
+        onClick = onClick,
+        label = {
+            Column {
+                Text(
+                    text = item.name,
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                Text(
+                    text = "${item.caloriesPerUnit} cal/unit",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+    )
+}
+
+@Composable
+fun StoredItemQuantityInput(
+    quantity: Double,
+    onQuantityChange: (Double) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier,
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.secondaryContainer
+        )
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp)
+        ) {
+            Text(
+                text = "Quantity",
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSecondaryContainer
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                OutlinedButton(
+                    onClick = {
+                        val newQty = (quantity - 1).coerceAtLeast(0.5)
+                        onQuantityChange(newQty)
+                    },
+                    enabled = quantity > 0.5
+                ) {
+                    Text("-", style = MaterialTheme.typography.titleLarge)
+                }
+                OutlinedTextField(
+                    value = if (quantity == quantity.toLong().toDouble()) {
+                        quantity.toLong().toString()
+                    } else {
+                        quantity.toString()
+                    },
+                    onValueChange = { value ->
+                        value.toDoubleOrNull()?.let { onQuantityChange(it) }
+                    },
+                    modifier = Modifier.weight(1f),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    singleLine = true,
+                    textStyle = MaterialTheme.typography.titleMedium.copy(
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                    )
+                )
+                OutlinedButton(
+                    onClick = {
+                        val newQty = quantity + 1
+                        onQuantityChange(newQty)
+                    }
+                ) {
+                    Text("+", style = MaterialTheme.typography.titleLarge)
+                }
+            }
+        }
+    }
 }

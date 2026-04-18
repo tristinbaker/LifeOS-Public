@@ -212,7 +212,7 @@ fun MediaLoggerContent(
                     searchService = viewModel.imageSearchService,
                     onImageSelected = { url, query ->
                         pendingCoverUrl = url
-                        pendingTitle = query.removeSuffix(" movie poster").removeSuffix(COVER_SEARCH_SUFFIX).trim().ifBlank { null }
+                        pendingTitle = query.removeSuffix(" movie poster").removeSuffix(" book cover").removeSuffix(COVER_SEARCH_SUFFIX).trim().ifBlank { null }
                         currentScreen = screenBeforeSearch
                     },
                     onNavigateBack = { currentScreen = screenBeforeSearch }
@@ -221,7 +221,7 @@ fun MediaLoggerContent(
                 "add_book" -> AddBookScreen(
                     selectedCoverUrl = pendingCoverUrl,
                     selectedTitle = pendingTitle,
-                    onSearchCover = { q -> goToImageSearch(if (q.isBlank()) "cover" else "$q cover", "add_book") },
+                    onSearchCover = { q -> goToImageSearch(if (q.isBlank()) "book cover" else "$q book cover", "add_book") },
                     onNavigateBack = { goToMain() },
                     onSave = { title, coverUrl, rating, date, notes, _, author, _, _, _ ->
                         viewModel.addMediaItem(title, coverUrl, rating, date, notes, MediaType.BOOK, author = author)
@@ -241,7 +241,7 @@ fun MediaLoggerContent(
                         existingDate = item?.dateCompleted,
                         existingNotes = item?.notes ?: "",
                         selectedCoverUrl = pendingCoverUrl,
-                        onSearchCover = { q -> goToImageSearch(q.ifBlank { "book cover" }, "edit_book") },
+                        onSearchCover = { q -> goToImageSearch(if (q.isBlank()) "book cover" else "$q book cover", "edit_book") },
                         onNavigateBack = { goToMain() },
                         onNavigateBackWithDelete = { viewModel.deleteMediaItem(id); goToMain() },
                         onSave = { title, coverUrl, rating, date, notes, _, author, _, _, _ ->

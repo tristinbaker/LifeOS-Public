@@ -33,6 +33,7 @@ import com.lifeos.modules.lifeos_mealtracker.ui.settings.SettingsScreen
 import com.lifeos.modules.lifeos_mealtracker.ui.settings.SettingsViewModel
 import com.lifeos.modules.lifeos_mealtracker.ui.shame.MotivationOverlay
 import com.lifeos.modules.lifeos_mealtracker.ui.shame.ShameOverlay
+import com.lifeos.modules.lifeos_mealtracker.ui.storeditems.AddStoredItemScreen
 import com.lifeos.modules.lifeos_mealtracker.ui.weight.WeightScreen
 
 sealed class Screen(
@@ -133,24 +134,63 @@ fun BrutalMealTrackerNavHost(
                 SavedMealsScreen(
                     onMealSelected = { savedMeal ->
                         navController.navigate("add_meal?savedMealId=${savedMeal.id}")
+                    },
+                    onStoredItemSelected = { storedItem, quantity ->
+                        navController.navigate("add_meal?storedItemId=${storedItem.id}&storedItemQuantity=$quantity")
+                    },
+                    onAddStoredItem = {
+                        navController.navigate("add_stored_item")
+                    },
+                    onEditStoredItem = { itemId ->
+                        navController.navigate("edit_stored_item/$itemId")
                     }
                 )
             }
             composable(
-                route = "add_meal?savedMealId={savedMealId}",
+                route = "add_meal?savedMealId={savedMealId}&storedItemId={storedItemId}&storedItemQuantity={storedItemQuantity}",
                 arguments = listOf(
                     navArgument("savedMealId") {
                         type = NavType.LongType
                         defaultValue = -1L
+                    },
+                    navArgument("storedItemId") {
+                        type = NavType.LongType
+                        defaultValue = -1L
+                    },
+                    navArgument("storedItemQuantity") {
+                        type = NavType.FloatType
+                        defaultValue = 1f
                     }
                 )
             ) { backStackEntry ->
                 val savedMealId = backStackEntry.arguments?.getLong("savedMealId")?.takeIf { it != -1L }
+                val storedItemId = backStackEntry.arguments?.getLong("storedItemId")?.takeIf { it != -1L }
+                val storedItemQuantity = backStackEntry.arguments?.getFloat("storedItemQuantity")?.toDouble()
                 AddMealScreen(
                     mealId = null,
                     savedMealId = savedMealId,
+                    storedItemId = storedItemId,
+                    storedItemQuantity = storedItemQuantity,
                     onNavigateBack = { navController.popBackStack() },
                     onShowShame = onShowShame
+                )
+            }
+            composable("add_stored_item") {
+                AddStoredItemScreen(
+                    itemId = null,
+                    onNavigateBack = { navController.popBackStack() }
+                )
+            }
+            composable(
+                route = "edit_stored_item/{itemId}",
+                arguments = listOf(
+                    navArgument("itemId") { type = NavType.LongType }
+                )
+            ) { backStackEntry ->
+                val itemId = backStackEntry.arguments?.getLong("itemId")
+                AddStoredItemScreen(
+                    itemId = itemId,
+                    onNavigateBack = { navController.popBackStack() }
                 )
             }
             composable(Screen.Weight.route) {

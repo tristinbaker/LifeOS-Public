@@ -5,9 +5,11 @@ import androidx.lifecycle.viewModelScope
 import com.lifeos.modules.lifeos_mealtracker.data.repository.MealRepository
 import com.lifeos.modules.lifeos_mealtracker.data.repository.SavedMealRepository
 import com.lifeos.modules.lifeos_mealtracker.data.repository.SettingsRepository
+import com.lifeos.modules.lifeos_mealtracker.data.repository.StoredItemRepository
 import com.lifeos.modules.lifeos_mealtracker.domain.model.MealEntry
 import com.lifeos.modules.lifeos_mealtracker.domain.model.MealType
 import com.lifeos.modules.lifeos_mealtracker.domain.model.SavedMeal
+import com.lifeos.modules.lifeos_mealtracker.domain.model.StoredItem
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -26,6 +28,9 @@ data class AddMealUiState(
     val fat: String = "",
     val saveAsFavorite: Boolean = false,
     val savedMeals: List<SavedMeal> = emptyList(),
+    val storedItems: List<StoredItem> = emptyList(),
+    val storedItemId: Long? = null,
+    val quantity: Double = 1.0,
     val dailyCalorieGoal: Int = 2000,
     val isLoading: Boolean = false,
     val shouldShowShame: Boolean = false
@@ -35,7 +40,8 @@ data class AddMealUiState(
 class AddMealViewModel @Inject constructor(
     private val mealRepository: MealRepository,
     private val savedMealRepository: SavedMealRepository,
-    private val settingsRepository: SettingsRepository
+    private val settingsRepository: SettingsRepository,
+    private val storedItemRepository: StoredItemRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(AddMealUiState())
@@ -48,11 +54,13 @@ class AddMealViewModel @Inject constructor(
         viewModelScope.launch {
             combine(
                 savedMealRepository.getAllSavedMeals(),
+                storedItemRepository.getAllStoredItems(),
                 settingsRepository.settings
-            ) { meals, settings ->
+            ) { meals, items, settings ->
                 _uiState.update {
                     it.copy(
                         savedMeals = meals,
+                        storedItems = items,
                         dailyCalorieGoal = settings.dailyCalorieGoal
                     )
                 }
@@ -97,6 +105,44 @@ class AddMealViewModel @Inject constructor(
                     )
                 }
             }
+        }
+    }
+
+    fun loadStoredItem(storedItemId: Long, quantity: Double = 1.0) {
+        viewModelScope.launch {
+            val item = storedItemRepository.getStoredItemById(storedItemId)
+            if (item != null) {
+                val qty = if (quantity <= 0) 1.0 else quantity
+                _uiState.update {
+                    it.copy(
+                        storedItemId = item.id,
+                        name = item.name,
+                        calories = (item.caloriesPerUnit * qty).toInt().toString(),
+                        protein = (item.proteinPerUnit * qty).toInt().toString(),
+                        carbs = (item.carbsPerUnit * qty).toInt().toString(),
+                        fat = (item.fatPerUnit * qty).toInt().toString(),
+                        quantity = qty
+                    )
+                }
+            }
+        }
+    }
+
+    fun updateQuantity(quantity: Double) {
+        val state = _uiState.value
+        val item = state.storedItems.find { it.id == state.storedItemId }
+        if (item != null && quantity > 0) {
+            _uiState.update {
+                it.copy(
+                    quantity = quantity,
+                    calories = (item.caloriesPerUnit * quantity).toInt().toString(),
+                    protein = (item.proteinPerUnit * quantity).toInt().toString(),
+                    carbs = (item.carbsPerUnit * quantity).toInt().toString(),
+                    fat = (item.fatPerUnit * quantity).toInt().toString()
+                )
+            }
+        } else {
+            _uiState.update { it.copy(quantity = quantity) }
         }
     }
 
