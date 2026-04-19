@@ -8,6 +8,7 @@ import java.net.URL
 
 data class WeatherData(
     val condition: String,
+    val conditionPhrase: String,
     val temperature: Int,
     val highTemp: Int,
     val lowTemp: Int,
@@ -72,12 +73,13 @@ object WeatherService {
                 val temperature = currentWeatherMatch.groupValues[1].toDouble().toInt()
                 val weathercode = currentWeatherMatch.groupValues[2].toInt()
                 val condition = getConditionFromCode(weathercode)
+                val conditionPhrase = getConditionPhraseFromCode(weathercode)
                 val highTemp = highTempMatch.groupValues[1].toInt()
                 val lowTemp = lowTempMatch.groupValues[1].toInt()
                 val precipProb = precipMatch?.groupValues?.get(1)?.toIntOrNull() ?: 0
                 val willRain = precipProb >= 30 && (weathercode >= 51 || isRainyCode(weathercode))
-                
-                WeatherData(condition, temperature, highTemp, lowTemp, willRain, "", weathercode, airQuality, airQualityLabel)
+
+                WeatherData(condition, conditionPhrase, temperature, highTemp, lowTemp, willRain, "", weathercode, airQuality, airQualityLabel)
             } else {
                 null
             }
@@ -89,6 +91,25 @@ object WeatherService {
 
     private fun isRainyCode(code: Int): Boolean {
         return code in listOf(61, 63, 65, 66, 67, 80, 81, 82, 95, 96, 99)
+    }
+
+    private fun getConditionPhraseFromCode(code: Int): String {
+        return when (code) {
+            0 -> "clear"
+            1, 2, 3 -> "partly cloudy"
+            45, 48 -> "foggy"
+            51, 53, 55 -> "drizzling"
+            56, 57 -> "freezing"
+            61, 63, 65 -> "raining"
+            66, 67 -> "freezing"
+            71, 73, 75 -> "snowing"
+            77 -> "snowing lightly"
+            80, 81, 82 -> "showery"
+            85, 86 -> "snowing"
+            95 -> "stormy"
+            96, 99 -> "stormy with hail"
+            else -> "unknown"
+        }
     }
 
     private fun getConditionFromCode(code: Int): String {

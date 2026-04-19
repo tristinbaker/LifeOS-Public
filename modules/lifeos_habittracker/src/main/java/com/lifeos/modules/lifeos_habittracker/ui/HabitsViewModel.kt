@@ -117,6 +117,7 @@ class HabitsViewModel @Inject constructor(
 
     fun deleteHabit(habitId: Long, onComplete: () -> Unit) {
         viewModelScope.launch {
+            reminderScheduler.cancelReminders(habitId)
             repository.deleteHabit(habitId)
             onComplete()
         }

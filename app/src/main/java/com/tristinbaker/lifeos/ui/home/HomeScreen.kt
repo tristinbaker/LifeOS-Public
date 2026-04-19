@@ -532,7 +532,7 @@ private fun WeatherCard(
                     Spacer(modifier = Modifier.width(12.dp))
                     Column {
                         Text(
-                            text = "It's currently ${weatherData.condition.lowercase()} in ${weatherData.cityName} and ${weatherData.temperature}\u00b0.",
+                            text = "It's currently ${weatherData.conditionPhrase} in ${weatherData.cityName} and ${weatherData.temperature}\u00b0.",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onPrimaryContainer
                         )
