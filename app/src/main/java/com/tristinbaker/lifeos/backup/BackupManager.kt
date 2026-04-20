@@ -23,7 +23,8 @@ object BackupManager {
         "lifeos_habittracker",
         "lifeos_mealtracker",
         "lifeos_sleeptracker",
-        "medialogger"
+        "medialogger",
+        "lifeos_sports"
     )
 
     // Suffixes for WAL-mode SQLite databases

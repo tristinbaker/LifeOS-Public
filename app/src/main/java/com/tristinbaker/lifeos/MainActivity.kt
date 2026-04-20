@@ -35,6 +35,7 @@ import com.lifeos.modules.lifeos_habittracker.HabitsModule
 import com.lifeos.modules.lifeos_medialogger.MediaLoggerModule
 import com.lifeos.modules.lifeos_sleeptracker.SleepModule
 import com.lifeos.modules.lifeos_journal.JournalModule
+import com.lifeos.modules.lifeos_sports.SportsModule
 import com.tristinbaker.lifeos.backup.BackupPreferences
 import com.tristinbaker.lifeos.ui.home.HomeScreen
 import com.tristinbaker.lifeos.ui.theme.LifeOSTheme
@@ -53,6 +54,7 @@ class MainActivity : AppCompatActivity() {
         ModuleRegistry.register(MediaLoggerModule())
         ModuleRegistry.register(SleepModule())
         ModuleRegistry.register(JournalModule())
+        ModuleRegistry.register(SportsModule())
 
         val initialModule = intent?.getStringExtra("module")
         val initialNoteId = if (initialModule == "notes") {
@@ -212,6 +214,14 @@ fun LifeOSNavHost(
 
         composable("journal") {
             val module = ModuleRegistry.getModule("journal")
+            module?.Content(
+                onNavigateBack = { navController.popBackStack() },
+                initialId = null
+            )
+        }
+
+        composable("sports") {
+            val module = ModuleRegistry.getModule("sports")
             module?.Content(
                 onNavigateBack = { navController.popBackStack() },
                 initialId = null

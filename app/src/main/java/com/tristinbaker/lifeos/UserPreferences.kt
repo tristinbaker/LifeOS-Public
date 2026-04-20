@@ -6,6 +6,7 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.doublePreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
@@ -19,6 +20,7 @@ object UserPreferences {
     private val LATITUDE = doublePreferencesKey("latitude")
     private val LONGITUDE = doublePreferencesKey("longitude")
     private val SHOW_WEATHER = booleanPreferencesKey("show_weather")
+    private val GRID_COLUMNS = intPreferencesKey("grid_columns")
 
     fun userName(context: Context): Flow<String> =
         context.userDataStore.data.map { it[USER_NAME] ?: "" }
@@ -35,6 +37,9 @@ object UserPreferences {
     fun showWeather(context: Context): Flow<Boolean> =
         context.userDataStore.data.map { it[SHOW_WEATHER] ?: false }
 
+    fun gridColumns(context: Context): Flow<Int> =
+        context.userDataStore.data.map { it[GRID_COLUMNS] ?: 2 }
+
     suspend fun setUserName(context: Context, name: String) {
         context.userDataStore.edit { it[USER_NAME] = name }
     }
@@ -49,5 +54,9 @@ object UserPreferences {
 
     suspend fun setShowWeather(context: Context, show: Boolean) {
         context.userDataStore.edit { it[SHOW_WEATHER] = show }
+    }
+
+    suspend fun setGridColumns(context: Context, columns: Int) {
+        context.userDataStore.edit { it[GRID_COLUMNS] = columns }
     }
 }

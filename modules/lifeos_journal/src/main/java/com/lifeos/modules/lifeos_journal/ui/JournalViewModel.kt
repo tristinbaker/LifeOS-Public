@@ -13,13 +13,15 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import java.time.LocalDate
 import javax.inject.Inject
 
 data class JournalUiState(
     val entries: List<JournalEntryEntity> = emptyList(),
     val weeklyStats: WeeklyStats = WeeklyStats(0),
     val settings: JournalSettingsEntity? = null,
-    val currentEntryImages: List<JournalImageEntity> = emptyList()
+    val currentEntryImages: List<JournalImageEntity> = emptyList(),
+    val weeklyImages: List<JournalImageEntity> = emptyList()
 )
 
 @HiltViewModel
@@ -105,6 +107,17 @@ class JournalViewModel @Inject constructor(
             repository.deleteAllImagesForEntry(entryId)
             repository.deleteEntry(entryId)
             onComplete()
+        }
+    }
+
+    fun loadWeeklyImages() {
+        viewModelScope.launch {
+            val today = LocalDate.now()
+            val daysFromMonday = (today.dayOfWeek.value - 1).toLong()
+            val weekStart = today.minusDays(daysFromMonday)
+            val weekEnd = weekStart.plusDays(6)
+            val images = repository.getWeeklyImages(weekStart, weekEnd)
+            _uiState.update { it.copy(weeklyImages = images) }
         }
     }
 

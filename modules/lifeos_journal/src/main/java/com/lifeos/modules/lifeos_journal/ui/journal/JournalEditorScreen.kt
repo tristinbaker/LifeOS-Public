@@ -11,7 +11,10 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.KeyboardCapitalization
@@ -69,16 +72,18 @@ fun JournalEditorScreen(
     var newImageUris by remember { mutableStateOf<List<Uri>>(emptyList()) }
     var removedImageIds by remember { mutableStateOf<Set<Long>>(emptySet()) }
 
-    // Full-screen viewer state — holds File (existing) or Uri (new)
-    var viewerModel by remember { mutableStateOf<Any?>(null) }
+    val displayedExistingImages = remember(images, removedImageIds) {
+        images.filter { it.id !in removedImageIds }
+    }
+
+    var viewerIndex by remember { mutableStateOf<Int?>(null) }
+    val allViewerItems: List<Any> = remember(displayedExistingImages, newImageUris) {
+        displayedExistingImages.map { File(it.localPath) } + newImageUris
+    }
 
     // Long-press removal state
     var pendingRemoveImage by remember { mutableStateOf<JournalImageEntity?>(null) }
     var pendingRemoveUri by remember { mutableStateOf<Uri?>(null) }
-
-    val displayedExistingImages = remember(images, removedImageIds) {
-        images.filter { it.id !in removedImageIds }
-    }
 
     var showDatePicker by remember { mutableStateOf(false) }
     val parsedDate = try { LocalDate.parse(date) } catch (e: Exception) { LocalDate.now() }
@@ -205,7 +210,7 @@ fun JournalEditorScreen(
                                 .clip(RoundedCornerShape(8.dp))
                                 .background(MaterialTheme.colorScheme.surfaceVariant)
                                 .combinedClickable(
-                                    onClick = { viewerModel = File(image.localPath) },
+                                    onClick = { viewerIndex = displayedExistingImages.indexOf(image) },
                                     onLongClick = { pendingRemoveImage = image }
                                 ),
                             contentScale = ContentScale.Crop
@@ -220,7 +225,7 @@ fun JournalEditorScreen(
                                 .clip(RoundedCornerShape(8.dp))
                                 .background(MaterialTheme.colorScheme.surfaceVariant)
                                 .combinedClickable(
-                                    onClick = { viewerModel = uri },
+                                    onClick = { viewerIndex = displayedExistingImages.size + newImageUris.indexOf(uri) },
                                     onLongClick = { pendingRemoveUri = uri }
                                 ),
                             contentScale = ContentScale.Crop
@@ -245,25 +250,51 @@ fun JournalEditorScreen(
         }
     }
 
-    // Full-screen image viewer
-    if (viewerModel != null) {
+    // Full-screen swipeable image viewer
+    viewerIndex?.let { startIndex ->
         Dialog(
-            onDismissRequest = { viewerModel = null },
+            onDismissRequest = { viewerIndex = null },
             properties = DialogProperties(usePlatformDefaultWidth = false)
         ) {
+            val pagerState = rememberPagerState(initialPage = startIndex) { allViewerItems.size }
             Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .background(Color.Black)
-                    .clickable { viewerModel = null },
-                contentAlignment = Alignment.Center
+                    .clickable { viewerIndex = null }
             ) {
-                AsyncImage(
-                    model = viewerModel,
-                    contentDescription = null,
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Fit
-                )
+                HorizontalPager(
+                    state = pagerState,
+                    modifier = Modifier.fillMaxSize()
+                ) { page ->
+                    AsyncImage(
+                        model = allViewerItems[page],
+                        contentDescription = null,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Fit
+                    )
+                }
+                if (allViewerItems.size > 1) {
+                    Row(
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .padding(bottom = 24.dp),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        repeat(allViewerItems.size) { i ->
+                            Box(
+                                Modifier
+                                    .size(if (i == pagerState.currentPage) 8.dp else 5.dp)
+                                    .clip(CircleShape)
+                                    .background(
+                                        if (i == pagerState.currentPage) Color.White
+                                        else Color.White.copy(alpha = 0.4f)
+                                    )
+                            )
+                        }
+                    }
+                }
             }
         }
     }

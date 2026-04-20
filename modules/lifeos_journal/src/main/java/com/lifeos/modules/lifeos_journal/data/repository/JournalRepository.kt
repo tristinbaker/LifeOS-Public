@@ -98,6 +98,14 @@ class JournalRepository @Inject constructor(
         images.forEach { File(it.localPath).delete() }
         journalImageDao.deleteAllImagesForEntry(entryId)
     }
+
+    suspend fun getWeeklyImages(weekStart: LocalDate, weekEnd: LocalDate): List<JournalImageEntity> {
+        val entries = journalEntryDao.getEntriesBetween(
+            weekStart.format(dateFormatter),
+            weekEnd.format(dateFormatter)
+        )
+        return entries.flatMap { entry -> journalImageDao.getImagesForEntryOnce(entry.id) }
+    }
 }
 
 data class WeeklyStats(

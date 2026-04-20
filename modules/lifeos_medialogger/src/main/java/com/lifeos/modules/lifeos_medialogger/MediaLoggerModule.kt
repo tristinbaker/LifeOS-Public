@@ -212,7 +212,7 @@ fun MediaLoggerContent(
                     searchService = viewModel.imageSearchService,
                     onImageSelected = { url, query ->
                         pendingCoverUrl = url
-                        pendingTitle = query.removeSuffix(" movie poster").removeSuffix(" book cover").removeSuffix(COVER_SEARCH_SUFFIX).trim().ifBlank { null }
+                        pendingTitle = query.removeSuffix(" movie poster").removeSuffix(" book cover").removeSuffix(" game box art").removeSuffix(COVER_SEARCH_SUFFIX).trim().ifBlank { null }
                         currentScreen = screenBeforeSearch
                     },
                     onNavigateBack = { currentScreen = screenBeforeSearch }
@@ -290,7 +290,7 @@ fun MediaLoggerContent(
                     isGame = true,
                     selectedCoverUrl = pendingCoverUrl,
                     selectedTitle = pendingTitle,
-                    onSearchCover = { q -> goToImageSearch(if (q.isBlank()) "cover" else "$q cover", "add_game") },
+                    onSearchCover = { q -> goToImageSearch(if (q.isBlank()) "game box art" else "$q game box art", "add_game") },
                     onNavigateBack = { goToMain() },
                     onSave = { title, coverUrl, rating, date, notes, platform, _, isRewatch, hasPlatinum, has100Percent ->
                         viewModel.addMediaItem(title, coverUrl, rating, date, notes, MediaType.GAME, platform = platform, isRewatch = isRewatch, hasPlatinum = hasPlatinum, has100Percent = has100Percent)
@@ -314,7 +314,7 @@ fun MediaLoggerContent(
                         existingHasPlatinum = item?.hasPlatinum ?: false,
                         existingHas100Percent = item?.has100Percent ?: false,
                         selectedCoverUrl = pendingCoverUrl,
-                        onSearchCover = { q -> goToImageSearch(q.ifBlank { "game cover art" }, "edit_game") },
+                        onSearchCover = { q -> goToImageSearch(if (q.isBlank()) "game box art" else "$q game box art", "edit_game") },
                         onNavigateBack = { goToMain() },
                         onNavigateBackWithDelete = { viewModel.deleteMediaItem(id); goToMain() },
                         onSave = { title, coverUrl, rating, date, notes, platform, _, isRewatch, hasPlatinum, has100Percent ->

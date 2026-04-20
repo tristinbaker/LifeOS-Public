@@ -22,6 +22,9 @@ import com.lifeos.modules.lifeos_journal.ui.JournalViewModel
 import com.lifeos.modules.lifeos_journal.ui.journal.JournalEditorScreen
 import com.lifeos.modules.lifeos_journal.ui.journal.JournalListScreen
 import com.lifeos.modules.lifeos_journal.ui.journal.JournalSettingsScreen
+import com.lifeos.modules.lifeos_journal.ui.journal.WeekReviewScreen
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
 
 class JournalModule : LifeOSModule {
     override val id: String = "journal"
@@ -53,6 +56,7 @@ class JournalModule : LifeOSModule {
                 BackHandler(onBack = onNavigateBack)
                 LaunchedEffect(Unit) {
                     viewModel.loadImagesForEntry(null)
+                    viewModel.loadWeeklyImages()
                 }
                 Column(
                     modifier = Modifier
@@ -87,6 +91,9 @@ class JournalModule : LifeOSModule {
                         },
                         onSettingsClick = {
                             moduleNavController.navigate("settings")
+                        },
+                        onWeekReviewClick = {
+                            moduleNavController.navigate("week_review")
                         }
                     )
                 }
@@ -150,6 +157,21 @@ class JournalModule : LifeOSModule {
                             }
                         }
                     }
+                )
+            }
+
+            composable("week_review") {
+                BackHandler(onBack = { moduleNavController.popBackStack() })
+                val today = LocalDate.now()
+                val daysFromMonday = (today.dayOfWeek.value - 1).toLong()
+                val weekStart = today.minusDays(daysFromMonday)
+                val weekEnd = weekStart.plusDays(6)
+                val fmt = DateTimeFormatter.ofPattern("MMM d")
+                val weekLabel = "${weekStart.format(fmt)} – ${weekEnd.format(DateTimeFormatter.ofPattern("MMM d, yyyy"))}"
+                WeekReviewScreen(
+                    images = uiState.weeklyImages,
+                    weekLabel = weekLabel,
+                    onClose = { moduleNavController.popBackStack() }
                 )
             }
 

@@ -11,6 +11,9 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -39,6 +42,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -106,6 +110,7 @@ fun HomeScreen(
     val latitude by UserPreferences.latitude(context).collectAsStateWithLifecycle(initialValue = null)
     val longitude by UserPreferences.longitude(context).collectAsStateWithLifecycle(initialValue = null)
     val showWeather by UserPreferences.showWeather(context).collectAsStateWithLifecycle(initialValue = false)
+    val gridColumns by UserPreferences.gridColumns(context).collectAsStateWithLifecycle(initialValue = 2)
 
     var weatherData by remember { mutableStateOf<WeatherData?>(null) }
     var isLoadingWeather by remember { mutableStateOf(false) }
@@ -237,8 +242,11 @@ Row(
             Spacer(modifier = Modifier.height(16.dp))
 
             LazyVerticalGrid(
-                columns = GridCells.Fixed(2),
-                contentPadding = PaddingValues(vertical = 8.dp),
+                columns = GridCells.Fixed(gridColumns),
+                contentPadding = PaddingValues(
+                    top = 8.dp,
+                    bottom = 8.dp + WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+                ),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
@@ -380,6 +388,7 @@ Row(
             currentName = userName,
             currentCity = cityName,
             currentShowWeather = showWeather,
+            currentGridColumns = gridColumns,
             onDismiss = { showHomeSettingsDialog = false },
             onSave = { _, _, _ -> }
         )
@@ -615,12 +624,14 @@ private fun HomeSettingsDialog(
     currentName: String,
     currentCity: String,
     currentShowWeather: Boolean,
+    currentGridColumns: Int,
     onDismiss: () -> Unit,
     onSave: (name: String, city: String, showWeather: Boolean) -> Unit
 ) {
     var name by remember { mutableStateOf(currentName) }
     var city by remember { mutableStateOf(currentCity) }
     var showWeather by remember { mutableStateOf(currentShowWeather) }
+    var gridCols by remember { mutableStateOf(currentGridColumns) }
     var isGeocoding by remember { mutableStateOf(false) }
     var geocodeError by remember { mutableStateOf<String?>(null) }
 
@@ -679,6 +690,20 @@ private fun HomeSettingsDialog(
                     )
                 }
 
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Text("Grid columns", style = MaterialTheme.typography.bodyMedium)
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    listOf(2, 3, 4).forEach { cols ->
+                        FilterChip(
+                            selected = gridCols == cols,
+                            onClick = { gridCols = cols },
+                            label = { Text("$cols") }
+                        )
+                    }
+                }
+
                 if (geocodeError != null) {
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
@@ -703,6 +728,7 @@ private fun HomeSettingsDialog(
                                 UserPreferences.setLocation(context, displayName, lat, lon)
                                 UserPreferences.setUserName(context, name)
                                 UserPreferences.setShowWeather(context, showWeather)
+                                UserPreferences.setGridColumns(context, gridCols)
                                 onDismiss()
                             } else {
                                 geocodeError = "Could not find city"
@@ -710,6 +736,7 @@ private fun HomeSettingsDialog(
                         } else {
                             UserPreferences.setUserName(context, name)
                             UserPreferences.setShowWeather(context, false)
+                            UserPreferences.setGridColumns(context, gridCols)
                             onDismiss()
                         }
                     }
