@@ -19,7 +19,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.lifeos.modules.lifeos_journal.data.local.JournalEntryEntity
-import com.lifeos.modules.lifeos_journal.data.repository.WeeklyStats
+import com.lifeos.modules.lifeos_journal.data.repository.JournalStats
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.time.format.TextStyle
@@ -31,7 +31,7 @@ private val moodEmojis = listOf("😢", "😕", "😐", "🙂", "😊")
 @Composable
 fun JournalListScreen(
     entries: List<JournalEntryEntity>,
-    weeklyStats: WeeklyStats,
+    journalStats: JournalStats,
     onEntryClick: (Long) -> Unit,
     onAddClick: () -> Unit,
     onSettingsClick: () -> Unit,
@@ -53,7 +53,7 @@ fun JournalListScreen(
             }
         )
 
-        WeeklyStatsCard(weeklyStats = weeklyStats)
+        JournalStatsCard(stats = journalStats)
 
         Card(
             modifier = Modifier
@@ -120,36 +120,45 @@ fun JournalListScreen(
 }
 
 @Composable
-private fun WeeklyStatsCard(weeklyStats: WeeklyStats) {
+private fun JournalStatsCard(stats: JournalStats) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 8.dp),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.primaryContainer
-        )
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(16.dp),
-            horizontalArrangement = Arrangement.Center
+            horizontalArrangement = Arrangement.SpaceEvenly
         ) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(
-                    text = "${weeklyStats.daysLogged}/7",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer
-                )
-                Text(
-                    text = "Entries this week",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
-                )
-            }
+            StatCell(value = "${stats.streak}", label = "day streak")
+            VerticalDivider(modifier = Modifier.height(40.dp), color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.15f))
+            StatCell(value = "${stats.avgWordCount}", label = "avg words")
+            VerticalDivider(modifier = Modifier.height(40.dp), color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.15f))
+            StatCell(value = "${stats.totalEntries}", label = "total entries")
+            VerticalDivider(modifier = Modifier.height(40.dp), color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.15f))
+            StatCell(value = moodEmojis.getOrElse((stats.avgMood.toInt() - 1).coerceIn(0, 4)) { "😐" }, label = "avg mood")
         }
+    }
+}
+
+@Composable
+private fun StatCell(value: String, label: String) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(
+            text = value,
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onPrimaryContainer
+        )
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+        )
     }
 }
 

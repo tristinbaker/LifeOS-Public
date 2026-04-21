@@ -63,6 +63,8 @@ class SleepViewModel @Inject constructor(
         endTime: Long,
         quality: Float,
         dreamNotes: String,
+        notes: String,
+        sleepMedicationTaken: Boolean,
         onComplete: () -> Unit
     ) {
         viewModelScope.launch {
@@ -72,7 +74,9 @@ class SleepViewModel @Inject constructor(
                 startTime = startTime,
                 endTime = endTime,
                 quality = quality,
-                dreamNotes = dreamNotes
+                dreamNotes = dreamNotes,
+                notes = notes,
+                sleepMedicationTaken = sleepMedicationTaken
             )
 
             if (id != null && id > 0) {

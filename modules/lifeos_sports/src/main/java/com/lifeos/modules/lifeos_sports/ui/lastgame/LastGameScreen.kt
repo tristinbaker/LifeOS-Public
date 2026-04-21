@@ -31,8 +31,9 @@ fun LastGameScreen(
     viewModel: LastGameViewModel = hiltViewModel()
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    fun compositeKey(team: com.lifeos.modules.lifeos_sports.domain.model.FavoriteTeam) = "${team.league.name}_${team.id}"
     val teamsWithGames = if (state.isLoading) state.favorites
-        else state.favorites.filter { state.gameDetails[it.id] != null }
+        else state.favorites.filter { state.gameDetails[compositeKey(it)] != null }
     val pagerState = rememberPagerState(pageCount = { maxOf(1, teamsWithGames.size) })
 
     LaunchedEffect(initialTeamId, teamsWithGames) {
@@ -98,7 +99,7 @@ fun LastGameScreen(
                         modifier = Modifier.fillMaxSize()
                     ) { page ->
                         val team = teamsWithGames[page]
-                        val details = state.gameDetails[team.id]
+                        val details = state.gameDetails[compositeKey(team)]
                         GameDetailsPage(team = team, details = details)
                     }
                 }

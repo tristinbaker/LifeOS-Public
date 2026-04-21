@@ -22,7 +22,7 @@ object SleepModule {
             context,
             SleepDatabase::class.java,
             "lifeos_sleeptracker.db"
-        ).build()
+        ).addMigrations(SleepDatabase.MIGRATION_1_2).build()
     }
 
     @Provides

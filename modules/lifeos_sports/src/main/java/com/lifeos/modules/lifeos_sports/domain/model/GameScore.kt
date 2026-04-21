@@ -43,5 +43,8 @@ data class GameSituation(
     // Football
     val downDistanceText: String? = null,
     val possession: String? = null,
-    val isRedZone: Boolean = false
+    val isRedZone: Boolean = false,
+    // Baseball live
+    val pitcher: String? = null,
+    val batter: String? = null
 )

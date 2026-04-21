@@ -42,11 +42,30 @@ class LastGameViewModel @Inject constructor(
     }
 
     private suspend fun loadLastGames(favorites: List<FavoriteTeam>, forceRefresh: Boolean = false) {
+        if (!forceRefresh) {
+            val cached = mutableMapOf<String, GameDetails?>()
+            favorites.forEach { team ->
+                cached[compositeKey(team)] = repository.getCachedLastGame(team.league, team.id)
+            }
+            val allCached = favorites.all { cached[compositeKey(it)] != null }
+            if (allCached) {
+                _state.update { it.copy(gameDetails = cached) }
+                return
+            }
+            if (cached.values.any { it != null }) {
+                _state.update { it.copy(gameDetails = cached) }
+            }
+        }
+
         _state.update { it.copy(isLoading = true, error = null) }
-        val details = mutableMapOf<String, GameDetails?>()
+        val details = _state.value.gameDetails.toMutableMap()
         favorites.forEach { team ->
-            details[team.id] = repository.getLastCompletedGame(team.league, team.id, forceRefresh)
+            if (forceRefresh || details[compositeKey(team)] == null) {
+                details[compositeKey(team)] = repository.getLastCompletedGame(team.league, team.id, forceRefresh)
+            }
         }
         _state.update { it.copy(isLoading = false, gameDetails = details) }
     }
+
+    private fun compositeKey(team: FavoriteTeam) = "${team.league.name}_${team.id}"
 }

@@ -40,7 +40,9 @@ data class EspnSituation(
     val downDistanceText: String = "",
     val shortDownDistanceText: String = "",
     val isRedZone: Boolean = false,
-    val possession: String = ""
+    val possession: String = "",
+    val pitcher: EspnProbable? = null,
+    val batter: EspnProbable? = null
 )
 
 @Serializable

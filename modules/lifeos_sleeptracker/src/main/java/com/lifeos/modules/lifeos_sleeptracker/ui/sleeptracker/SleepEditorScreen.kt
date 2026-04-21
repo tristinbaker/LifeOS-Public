@@ -44,6 +44,8 @@ fun SleepEditorScreen(
         endTime: Long,
         quality: Float,
         dreamNotes: String,
+        notes: String,
+        sleepMedicationTaken: Boolean,
         onComplete: () -> Unit
     ) -> Unit,
     onDelete: () -> Unit,
@@ -73,6 +75,8 @@ fun SleepEditorScreen(
     }
     var quality by remember(log) { mutableStateOf(log?.quality ?: 3f) }
     var dreamNotes by remember(log) { mutableStateOf(log?.dreamNotes ?: "") }
+    var notes by remember(log) { mutableStateOf(log?.notes ?: "") }
+    var sleepMedicationTaken by remember(log) { mutableStateOf(log?.sleepMedicationTaken ?: false) }
 
     var showDatePicker by remember { mutableStateOf(false) }
     var showStartTimePicker by remember { mutableStateOf(false) }
@@ -211,6 +215,43 @@ fun SleepEditorScreen(
                 placeholder = { Text("Describe any dreams you remember...") },
                 maxLines = 5
             )
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            Text(
+                "Notes (optional)",
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.primary
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            OutlinedTextField(
+                value = notes,
+                onValueChange = { notes = it },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(120.dp),
+                placeholder = { Text("Any other notes about your sleep...") },
+                maxLines = 5
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    "Sleep Medication Taken?",
+                    style = MaterialTheme.typography.bodyLarge
+                )
+                Checkbox(
+                    checked = sleepMedicationTaken,
+                    onCheckedChange = { sleepMedicationTaken = it }
+                )
+            }
         }
 
         Button(
@@ -222,6 +263,8 @@ fun SleepEditorScreen(
                     endTimeMillis,
                     quality,
                     dreamNotes,
+                    notes,
+                    sleepMedicationTaken,
                     onNavigateBack
                 )
             },

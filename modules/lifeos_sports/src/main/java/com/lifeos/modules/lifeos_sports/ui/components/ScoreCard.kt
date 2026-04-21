@@ -184,31 +184,51 @@ private fun LiveTeamScore(abbreviation: String, score: String?) {
 
 @Composable
 private fun BaseballSituation(situation: GameSituation) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        // Bases diamond
-        BasesDiamond(
-            onFirst = situation.onFirst,
-            onSecond = situation.onSecond,
-            onThird = situation.onThird
-        )
-
-        // Count and outs
-        Column(horizontalAlignment = Alignment.End) {
-            Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text("B", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                CountDots(filled = situation.balls ?: 0, total = 4, color = MaterialTheme.colorScheme.tertiary)
-                Spacer(Modifier.width(6.dp))
-                Text("S", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                CountDots(filled = situation.strikes ?: 0, total = 3, color = MaterialTheme.colorScheme.error)
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            BasesDiamond(
+                onFirst = situation.onFirst,
+                onSecond = situation.onSecond,
+                onThird = situation.onThird
+            )
+            Column(horizontalAlignment = Alignment.End) {
+                Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text("B", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    CountDots(filled = situation.balls ?: 0, total = 4, color = MaterialTheme.colorScheme.tertiary)
+                    Spacer(Modifier.width(6.dp))
+                    Text("S", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    CountDots(filled = situation.strikes ?: 0, total = 3, color = MaterialTheme.colorScheme.error)
+                }
+                Spacer(Modifier.height(4.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text("O", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    CountDots(filled = situation.outs ?: 0, total = 3, color = MaterialTheme.colorScheme.onSurface)
+                }
             }
-            Spacer(Modifier.height(4.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text("O", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                CountDots(filled = situation.outs ?: 0, total = 3, color = MaterialTheme.colorScheme.onSurface)
+        }
+        if (!situation.pitcher.isNullOrBlank() || !situation.batter.isNullOrBlank()) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                situation.pitcher?.let {
+                    Text(
+                        text = "P: $it",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                situation.batter?.let {
+                    Text(
+                        text = "AB: $it",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
         }
     }

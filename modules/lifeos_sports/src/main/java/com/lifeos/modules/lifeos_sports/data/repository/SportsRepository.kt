@@ -118,7 +118,9 @@ class SportsRepository @Inject constructor(
                 outs = sit.outs,
                 onFirst = sit.onFirst,
                 onSecond = sit.onSecond,
-                onThird = sit.onThird
+                onThird = sit.onThird,
+                pitcher = sit.pitcher?.athlete?.shortName,
+                batter = sit.batter?.athlete?.shortName
             )
             League.NFL, League.NCAA_FOOTBALL -> {
                 val possessionTeam = comp.competitors.firstOrNull { it.team.id == sit.possession }
@@ -281,6 +283,12 @@ class SportsRepository @Inject constructor(
                 league = league
             )
         } ?: emptyList()
+    }
+
+    suspend fun getCachedLastGame(league: League, teamId: String): GameDetails? {
+        val cached = safeGet("lastgame_${league.name}_${teamId}") ?: return null
+        if (cached.cachedDate != todayDateString()) return null
+        return try { json.decodeFromString<GameDetails>(cached.data) } catch (e: Exception) { null }
     }
 
     suspend fun getLastCompletedGame(league: League, teamId: String, forceRefresh: Boolean = false): GameDetails? {

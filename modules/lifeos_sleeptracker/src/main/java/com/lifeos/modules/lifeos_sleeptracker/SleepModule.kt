@@ -93,7 +93,7 @@ class SleepModule : LifeOSModule {
                 SleepEditorScreen(
                     log = null,
                     onNavigateBack = { moduleNavController.popBackStack() },
-                    onSave = { id, date, startTime, endTime, quality, dreamNotes, onComplete ->
+                    onSave = { id, date, startTime, endTime, quality, dreamNotes, notes, sleepMedicationTaken, onComplete ->
                         viewModel.saveLog(
                             id = id,
                             date = date,
@@ -101,6 +101,8 @@ class SleepModule : LifeOSModule {
                             endTime = endTime,
                             quality = quality,
                             dreamNotes = dreamNotes,
+                            notes = notes,
+                            sleepMedicationTaken = sleepMedicationTaken,
                             onComplete = onComplete
                         )
                     },
@@ -119,7 +121,7 @@ class SleepModule : LifeOSModule {
                 SleepEditorScreen(
                     log = log,
                     onNavigateBack = { moduleNavController.popBackStack() },
-                    onSave = { id, date, startTime, endTime, quality, dreamNotes, onComplete ->
+                    onSave = { id, date, startTime, endTime, quality, dreamNotes, notes, sleepMedicationTaken, onComplete ->
                         viewModel.saveLog(
                             id = id,
                             date = date,
@@ -127,6 +129,8 @@ class SleepModule : LifeOSModule {
                             endTime = endTime,
                             quality = quality,
                             dreamNotes = dreamNotes,
+                            notes = notes,
+                            sleepMedicationTaken = sleepMedicationTaken,
                             onComplete = onComplete
                         )
                     },

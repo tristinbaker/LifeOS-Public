@@ -23,8 +23,6 @@ import com.lifeos.modules.lifeos_journal.ui.journal.JournalEditorScreen
 import com.lifeos.modules.lifeos_journal.ui.journal.JournalListScreen
 import com.lifeos.modules.lifeos_journal.ui.journal.JournalSettingsScreen
 import com.lifeos.modules.lifeos_journal.ui.journal.WeekReviewScreen
-import java.time.LocalDate
-import java.time.format.DateTimeFormatter
 
 class JournalModule : LifeOSModule {
     override val id: String = "journal"
@@ -82,7 +80,7 @@ class JournalModule : LifeOSModule {
 
                     JournalListScreen(
                         entries = uiState.entries,
-                        weeklyStats = uiState.weeklyStats,
+                        journalStats = uiState.journalStats,
                         onEntryClick = { entryId ->
                             moduleNavController.navigate("edit/$entryId")
                         },
@@ -162,15 +160,13 @@ class JournalModule : LifeOSModule {
 
             composable("week_review") {
                 BackHandler(onBack = { moduleNavController.popBackStack() })
-                val today = LocalDate.now()
-                val daysFromMonday = (today.dayOfWeek.value - 1).toLong()
-                val weekStart = today.minusDays(daysFromMonday)
-                val weekEnd = weekStart.plusDays(6)
-                val fmt = DateTimeFormatter.ofPattern("MMM d")
-                val weekLabel = "${weekStart.format(fmt)} – ${weekEnd.format(DateTimeFormatter.ofPattern("MMM d, yyyy"))}"
                 WeekReviewScreen(
                     images = uiState.weeklyImages,
-                    weekLabel = weekLabel,
+                    weekLabel = uiState.weekLabel,
+                    weekOffset = uiState.weekOffset,
+                    isLoading = uiState.weekReviewLoading,
+                    onPrevWeek = { viewModel.navigateWeek(-1) },
+                    onNextWeek = { viewModel.navigateWeek(1) },
                     onClose = { moduleNavController.popBackStack() }
                 )
             }

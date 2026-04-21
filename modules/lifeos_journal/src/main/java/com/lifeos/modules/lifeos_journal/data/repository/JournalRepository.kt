@@ -40,16 +40,6 @@ class JournalRepository @Inject constructor(
 
     suspend fun searchEntries(query: String): List<JournalEntryEntity> = journalEntryDao.searchEntries(query)
 
-    suspend fun getWeeklyStats(): WeeklyStats {
-        val today = LocalDate.now()
-        val weekStart = today.minusDays(6)
-        val entries = journalEntryDao.getEntriesBetween(
-            weekStart.format(dateFormatter),
-            today.format(dateFormatter)
-        )
-        return WeeklyStats(entries.size)
-    }
-
     fun getSettings(): Flow<JournalSettingsEntity?> = journalSettingsDao.getSettings()
 
     suspend fun getSettingsOnce(): JournalSettingsEntity? = journalSettingsDao.getSettingsOnce()
@@ -108,6 +98,9 @@ class JournalRepository @Inject constructor(
     }
 }
 
-data class WeeklyStats(
-    val daysLogged: Int
+data class JournalStats(
+    val streak: Int = 0,
+    val avgWordCount: Int = 0,
+    val totalEntries: Int = 0,
+    val avgMood: Float = 0f
 )

@@ -1,5 +1,8 @@
 package com.lifeos.modules.lifeos_sports.ui.settings
 
+import android.Manifest
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -7,7 +10,9 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.outlined.FavoriteBorder
+import androidx.compose.material.icons.outlined.NotificationsNone
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -25,10 +30,22 @@ import com.lifeos.modules.lifeos_sports.domain.model.League
 fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
     val state by viewModel.state.collectAsStateWithLifecycle()
 
+    val permissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) viewModel.onNotificationPermissionGranted()
+        else viewModel.onNotificationPermissionDenied()
+    }
+
+    LaunchedEffect(state.pendingNotifTeam) {
+        if (state.pendingNotifTeam != null) {
+            permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
+    }
+
     Column(modifier = Modifier.fillMaxSize()) {
         TopAppBar(title = { Text("My Teams") })
 
-        // League tabs
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -72,10 +89,15 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
                     contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp)
                 ) {
                     items(filtered, key = { "${it.league.name}_${it.id}" }) { team ->
+                        val compositeId = "${team.league.name}_${team.id}"
+                        val isFavorite = compositeId in state.favoriteCompositeIds
+                        val notifEnabled = compositeId in state.notificationCompositeIds
                         TeamRow(
                             team = team,
-                            isFavorite = "${team.league.name}_${team.id}" in state.favoriteCompositeIds,
-                            onToggle = { viewModel.toggleFavorite(team) }
+                            isFavorite = isFavorite,
+                            notificationsEnabled = notifEnabled,
+                            onToggleFavorite = { viewModel.toggleFavorite(team) },
+                            onToggleNotification = { viewModel.toggleNotification(team) }
                         )
                         HorizontalDivider(thickness = 0.5.dp)
                     }
@@ -86,7 +108,13 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
 }
 
 @Composable
-private fun TeamRow(team: FavoriteTeam, isFavorite: Boolean, onToggle: () -> Unit) {
+private fun TeamRow(
+    team: FavoriteTeam,
+    isFavorite: Boolean,
+    notificationsEnabled: Boolean,
+    onToggleFavorite: () -> Unit,
+    onToggleNotification: () -> Unit
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -107,7 +135,18 @@ private fun TeamRow(team: FavoriteTeam, isFavorite: Boolean, onToggle: () -> Uni
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
-        IconButton(onClick = onToggle) {
+
+        if (isFavorite) {
+            IconButton(onClick = onToggleNotification) {
+                Icon(
+                    imageVector = if (notificationsEnabled) Icons.Filled.Notifications else Icons.Outlined.NotificationsNone,
+                    contentDescription = if (notificationsEnabled) "Disable game notifications" else "Enable game notifications",
+                    tint = if (notificationsEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+
+        IconButton(onClick = onToggleFavorite) {
             Icon(
                 imageVector = if (isFavorite) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
                 contentDescription = if (isFavorite) "Remove from favorites" else "Add to favorites",

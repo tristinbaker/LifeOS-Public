@@ -12,6 +12,8 @@ data class SleepLogEntity(
     val endTime: Long, // epoch millis
     val quality: Float, // 0.5 to 5.0, increments of 0.5
     val dreamNotes: String = "",
+    val notes: String = "",
+    val sleepMedicationTaken: Boolean = false,
     val createdAt: Long = System.currentTimeMillis()
 )
 
