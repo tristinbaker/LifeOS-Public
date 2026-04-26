@@ -18,9 +18,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
-import java.time.Instant
-import java.time.LocalDateTime
-import java.time.ZoneId
+import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -160,11 +158,11 @@ fun JournalSettingsScreen(
                         ) {
                             Icon(Icons.Default.Schedule, null, Modifier.size(18.dp))
                             Spacer(Modifier.width(8.dp))
-                            val dt = LocalDateTime.ofInstant(
-                                Instant.ofEpochMilli(time),
-                                ZoneId.systemDefault()
+                            val lt = LocalTime.of(
+                                (time / (60 * 60 * 1000)).toInt(),
+                                ((time / (60 * 1000)) % 60).toInt()
                             )
-                            Text(dt.format(DateTimeFormatter.ofPattern("h:mm a")))
+                            Text(lt.format(DateTimeFormatter.ofPattern("h:mm a")))
                         }
                     }
                 }
@@ -181,8 +179,10 @@ fun JournalSettingsScreen(
     }
 
     if (showTimePicker) {
-        val currentTime = LocalDateTime.ofInstant(Instant.ofEpochMilli(time), ZoneId.systemDefault())
-        val timePickerState = rememberTimePickerState(currentTime.hour, currentTime.minute)
+        val timePickerState = rememberTimePickerState(
+            (time / (60 * 60 * 1000)).toInt(),
+            ((time / (60 * 1000)) % 60).toInt()
+        )
 
         AlertDialog(
             onDismissRequest = { showTimePicker = false },
@@ -190,9 +190,7 @@ fun JournalSettingsScreen(
             text = { TimePicker(state = timePickerState) },
             confirmButton = {
                 TextButton({
-                    val now = LocalDateTime.now()
-                    val selected = now.withHour(timePickerState.hour).withMinute(timePickerState.minute)
-                    time = selected.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
+                    time = (timePickerState.hour * 60L * 60 * 1000) + (timePickerState.minute * 60L * 1000)
                     onUpdateSettings(enabled, time)
                     showTimePicker = false
                 }) { Text("Set") }

@@ -29,42 +29,25 @@ class LastGameViewModel @Inject constructor(
         viewModelScope.launch {
             repository.getFavoriteTeams().collect { favorites ->
                 _state.update { it.copy(favorites = favorites) }
-                if (favorites.isNotEmpty()) loadLastGames(favorites)
+                val cached = favorites.associate { team ->
+                    compositeKey(team) to repository.getCachedLastGame(team.league, team.id)
+                }
+                _state.update { it.copy(gameDetails = cached) }
             }
         }
     }
 
     fun refresh() {
         viewModelScope.launch {
-            val favorites = repository.getFavoriteTeams().first()
-            if (favorites.isNotEmpty()) loadLastGames(favorites, forceRefresh = true)
-        }
-    }
-
-    private suspend fun loadLastGames(favorites: List<FavoriteTeam>, forceRefresh: Boolean = false) {
-        if (!forceRefresh) {
-            val cached = mutableMapOf<String, GameDetails?>()
+            val favorites = _state.value.favorites
+            if (favorites.isEmpty()) return@launch
+            _state.update { it.copy(isLoading = true, error = null) }
+            val details = mutableMapOf<String, GameDetails?>()
             favorites.forEach { team ->
-                cached[compositeKey(team)] = repository.getCachedLastGame(team.league, team.id)
+                details[compositeKey(team)] = repository.getLastCompletedGame(team.league, team.id, forceRefresh = true)
             }
-            val allCached = favorites.all { cached[compositeKey(it)] != null }
-            if (allCached) {
-                _state.update { it.copy(gameDetails = cached) }
-                return
-            }
-            if (cached.values.any { it != null }) {
-                _state.update { it.copy(gameDetails = cached) }
-            }
+            _state.update { it.copy(isLoading = false, gameDetails = details) }
         }
-
-        _state.update { it.copy(isLoading = true, error = null) }
-        val details = _state.value.gameDetails.toMutableMap()
-        favorites.forEach { team ->
-            if (forceRefresh || details[compositeKey(team)] == null) {
-                details[compositeKey(team)] = repository.getLastCompletedGame(team.league, team.id, forceRefresh)
-            }
-        }
-        _state.update { it.copy(isLoading = false, gameDetails = details) }
     }
 
     private fun compositeKey(team: FavoriteTeam) = "${team.league.name}_${team.id}"

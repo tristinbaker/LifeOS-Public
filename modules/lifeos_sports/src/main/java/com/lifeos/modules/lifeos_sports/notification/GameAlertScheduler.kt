@@ -29,7 +29,7 @@ class GameAlertScheduler @Inject constructor(
 
         WorkManager.getInstance(context).enqueueUniquePeriodicWork(
             "game_alert_daily",
-            ExistingPeriodicWorkPolicy.KEEP,
+            ExistingPeriodicWorkPolicy.UPDATE,
             PeriodicWorkRequestBuilder<GameAlertWorker>(1, TimeUnit.DAYS)
                 .setInitialDelay(initialDelayMs, TimeUnit.MILLISECONDS)
                 .addTag(GameAlertWorker.TAG)

@@ -33,13 +33,14 @@ class GameAlertWorker(context: Context, params: WorkerParameters) : CoroutineWor
         }.groupBy({ it.first }, { it.second })
 
         val now = Instant.now()
+        val todayStr = java.text.SimpleDateFormat("yyyyMMdd", java.util.Locale.US).format(java.util.Date())
 
         for ((league, teamIds) in byLeague) {
-            val response = EspnApiService.getScoreboard(league) ?: continue
+            val response = EspnApiService.getScoreboardForDate(league, todayStr) ?: continue
             for (event in response.events) {
                 if (event.date.isBlank()) continue
                 val comp = event.competitions.firstOrNull() ?: continue
-                if (comp.status.type.state != "pre") continue
+                if (comp.status.type.state != "pre" && comp.status.type.state != "in") continue
 
                 val home = comp.competitors.firstOrNull { it.homeAway == "home" } ?: continue
                 val away = comp.competitors.firstOrNull { it.homeAway == "away" } ?: continue

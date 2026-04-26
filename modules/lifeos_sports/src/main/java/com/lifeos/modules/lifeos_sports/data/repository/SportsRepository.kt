@@ -49,11 +49,9 @@ class SportsRepository @Inject constructor(
     }
 
     suspend fun getScoresForLeague(league: League): List<GameScore> {
-        val response = EspnApiService.getScoreboard(league) ?: return emptyList()
-        val todayCal = Calendar.getInstance()
+        val todayStr = SimpleDateFormat("yyyyMMdd", Locale.US).format(Date())
+        val response = EspnApiService.getScoreboardForDate(league, todayStr) ?: return emptyList()
         return response.events.mapNotNull { event ->
-            // Some league scoreboards (NFL, NCAAF) return future-week games — filter to today only.
-            if (!isGameToday(event.date, todayCal)) return@mapNotNull null
             val comp = event.competitions.firstOrNull() ?: return@mapNotNull null
             val home = comp.competitors.firstOrNull { it.homeAway == "home" }
             val away = comp.competitors.firstOrNull { it.homeAway == "away" }
@@ -95,19 +93,6 @@ class SportsRepository @Inject constructor(
         }
     }
 
-    private fun isGameToday(dateStr: String, todayCal: Calendar): Boolean {
-        return try {
-            val inputFmt = SimpleDateFormat("yyyy-MM-dd'T'HH:mm'Z'", Locale.US).apply {
-                timeZone = TimeZone.getTimeZone("UTC")
-            }
-            val gameDate = inputFmt.parse(dateStr) ?: return true
-            val gameCal = Calendar.getInstance().apply { time = gameDate }
-            gameCal.get(Calendar.YEAR) == todayCal.get(Calendar.YEAR) &&
-                gameCal.get(Calendar.DAY_OF_YEAR) == todayCal.get(Calendar.DAY_OF_YEAR)
-        } catch (e: Exception) {
-            true
-        }
-    }
 
     private fun mapSituation(comp: com.lifeos.modules.lifeos_sports.data.api.EspnCompetition, league: League): GameSituation? {
         val sit = comp.situation ?: return null
@@ -287,7 +272,6 @@ class SportsRepository @Inject constructor(
 
     suspend fun getCachedLastGame(league: League, teamId: String): GameDetails? {
         val cached = safeGet("lastgame_${league.name}_${teamId}") ?: return null
-        if (cached.cachedDate != todayDateString()) return null
         return try { json.decodeFromString<GameDetails>(cached.data) } catch (e: Exception) { null }
     }
 

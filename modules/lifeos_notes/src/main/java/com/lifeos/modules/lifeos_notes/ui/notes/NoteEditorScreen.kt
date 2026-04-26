@@ -117,18 +117,18 @@ fun NoteEditorScreen(
                 Tab(
                     selected = selectedTab == 0,
                     onClick = { selectedTab = 0 },
-                    text = { Text("Checklist") }
+                    text = { Text("Notes") }
                 )
                 Tab(
                     selected = selectedTab == 1,
                     onClick = { selectedTab = 1 },
-                    text = { Text("Notes") }
+                    text = { Text("Checklist") }
                 )
             }
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            if (selectedTab == 0) {
+if (selectedTab == 1) {
                 ChecklistEditor(
                     checklistJson = checklistJson,
                     onChecklistChange = { checklistJson = it },

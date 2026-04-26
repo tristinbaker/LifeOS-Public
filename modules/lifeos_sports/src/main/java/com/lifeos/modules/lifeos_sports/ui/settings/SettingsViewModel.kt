@@ -51,6 +51,7 @@ class SettingsViewModel @Inject constructor(
             }
         }
         scheduler.scheduleDailyCheck()
+        scheduler.scheduleNow()
         loadTeamsForLeague(League.MLB)
     }
 
