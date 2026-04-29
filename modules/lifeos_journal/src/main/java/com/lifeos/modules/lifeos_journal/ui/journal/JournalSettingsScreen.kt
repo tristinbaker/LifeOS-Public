@@ -32,7 +32,9 @@ fun JournalSettingsScreen(
 ) {
     val context = LocalContext.current
     var enabled by remember(reminderEnabled) { mutableStateOf(reminderEnabled) }
-    var time by remember(reminderTime) { mutableStateOf(reminderTime) }
+    val sanitizedTime = reminderTime.takeIf { it in 0..(23L * 60 * 60 * 1000 + 59 * 60 * 1000) }
+        ?: (21L * 60 * 60 * 1000)
+    var time by remember(reminderTime) { mutableStateOf(sanitizedTime) }
     var showTimePicker by remember { mutableStateOf(false) }
 
     val notificationPermissionLauncher = rememberLauncherForActivityResult(

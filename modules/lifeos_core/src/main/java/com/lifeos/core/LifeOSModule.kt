@@ -8,6 +8,7 @@ interface LifeOSModule {
     val name: String
     val icon: ImageVector
     val description: String
+    val shortDescription: String get() = description
     val version: String
 
     @Composable

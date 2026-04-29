@@ -72,7 +72,9 @@ class SportsRepository @Inject constructor(
                     logo = home?.team?.logo ?: "",
                     record = home?.records?.firstOrNull { it.name == "overall" }?.summary,
                     probablePitcher = if (isPre && league == League.MLB)
-                        home?.probables?.firstOrNull()?.athlete?.shortName else null
+                        home?.probables?.firstOrNull()?.athlete?.shortName else null,
+                    pitcherEra = if (isPre && league == League.MLB)
+                        home?.probables?.firstOrNull()?.statistics?.find { it.name == "ERA" }?.displayValue else null
                 ),
                 awayTeam = TeamScore(
                     id = away?.team?.id ?: "",
@@ -82,7 +84,9 @@ class SportsRepository @Inject constructor(
                     logo = away?.team?.logo ?: "",
                     record = away?.records?.firstOrNull { it.name == "overall" }?.summary,
                     probablePitcher = if (isPre && league == League.MLB)
-                        away?.probables?.firstOrNull()?.athlete?.shortName else null
+                        away?.probables?.firstOrNull()?.athlete?.shortName else null,
+                    pitcherEra = if (isPre && league == League.MLB)
+                        away?.probables?.firstOrNull()?.statistics?.find { it.name == "ERA" }?.displayValue else null
                 ),
                 status = status,
                 displayClock = comp.status.displayClock,

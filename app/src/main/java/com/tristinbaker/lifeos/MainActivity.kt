@@ -36,6 +36,7 @@ import com.lifeos.modules.lifeos_medialogger.MediaLoggerModule
 import com.lifeos.modules.lifeos_sleeptracker.SleepModule
 import com.lifeos.modules.lifeos_journal.JournalModule
 import com.lifeos.modules.lifeos_sports.SportsModule
+import com.lifeos.modules.lifeos_physicalmedia.PhysicalMediaModule
 import com.tristinbaker.lifeos.backup.BackupPreferences
 import com.tristinbaker.lifeos.ui.home.HomeScreen
 import com.tristinbaker.lifeos.ui.theme.LifeOSTheme
@@ -51,10 +52,11 @@ class MainActivity : AppCompatActivity() {
         ModuleRegistry.register(MealTrackerModule())
         ModuleRegistry.register(NotesModule())
         ModuleRegistry.register(HabitsModule())
-        ModuleRegistry.register(MediaLoggerModule())
         ModuleRegistry.register(SleepModule())
         ModuleRegistry.register(JournalModule())
         ModuleRegistry.register(SportsModule())
+        ModuleRegistry.register(MediaLoggerModule())
+        ModuleRegistry.register(PhysicalMediaModule())
 
         val initialModule = intent?.getStringExtra("module")
         val initialNoteId = if (initialModule == "notes") {
@@ -222,6 +224,14 @@ fun LifeOSNavHost(
 
         composable("sports") {
             val module = ModuleRegistry.getModule("sports")
+            module?.Content(
+                onNavigateBack = { navController.popBackStack() },
+                initialId = null
+            )
+        }
+
+        composable("physicalmedia") {
+            val module = ModuleRegistry.getModule("physicalmedia")
             module?.Content(
                 onNavigateBack = { navController.popBackStack() },
                 initialId = null

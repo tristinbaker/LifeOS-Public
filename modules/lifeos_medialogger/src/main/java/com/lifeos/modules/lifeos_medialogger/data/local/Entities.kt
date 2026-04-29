@@ -27,6 +27,8 @@ data class MediaItemEntity(
     val isRewatch: Boolean = false,
     val hasPlatinum: Boolean = false,
     val has100Percent: Boolean = false,
+    val seriesName: String? = null,
+    val seriesNumber: Float? = null,
     val createdAt: Long = System.currentTimeMillis()
 )
 

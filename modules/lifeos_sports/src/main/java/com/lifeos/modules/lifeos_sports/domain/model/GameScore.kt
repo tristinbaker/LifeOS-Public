@@ -23,7 +23,8 @@ data class TeamScore(
     val score: String?,
     val logo: String,
     val record: String? = null,
-    val probablePitcher: String? = null
+    val probablePitcher: String? = null,
+    val pitcherEra: String? = null
 )
 
 @Serializable

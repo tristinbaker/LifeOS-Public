@@ -29,6 +29,7 @@ class JournalModule : LifeOSModule {
     override val name: String = "Journal"
     override val icon: ImageVector = Icons.Default.Book
     override val description: String = "Daily journaling and reflection"
+    override val shortDescription: String = "Daily journaling"
     override val version: String = "1.0"
 
     @Composable

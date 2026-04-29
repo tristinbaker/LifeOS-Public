@@ -21,7 +21,7 @@ object MediaLoggerModule {
             context,
             MediaLoggerDatabase::class.java,
             "medialogger.db"
-        ).addMigrations(MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6).build()
+        ).addMigrations(MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7).build()
     }
 
     @Provides

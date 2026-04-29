@@ -15,6 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
+import com.lifeos.modules.lifeos_medialogger.service.ImageCacheService
 import com.lifeos.modules.lifeos_medialogger.service.ImageSearchResult
 import com.lifeos.modules.lifeos_medialogger.service.ImageSearchService
 import kotlinx.coroutines.launch
@@ -23,22 +24,24 @@ import kotlinx.coroutines.launch
 fun ImageSearchScreen(
     initialQuery: String,
     searchService: ImageSearchService,
-    onImageSelected: (url: String, query: String) -> Unit,
+    imageCacheService: ImageCacheService,
+    onImageSelected: (localPath: String, query: String) -> Unit,
     onNavigateBack: () -> Unit
 ) {
     var query by remember { mutableStateOf(initialQuery) }
     var results by remember { mutableStateOf<List<ImageSearchResult>>(emptyList()) }
-    var isLoading by remember { mutableStateOf(false) }
+    var isSearching by remember { mutableStateOf(false) }
+    var isDownloading by remember { mutableStateOf(false) }
     var message by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
 
     fun doSearch() {
         if (query.isBlank()) return
         scope.launch {
-            isLoading = true
+            isSearching = true
             message = null
             results = searchService.search(query)
-            isLoading = false
+            isSearching = false
             if (results.isEmpty()) message = "No results found"
         }
     }
@@ -72,11 +75,20 @@ fun ImageSearchScreen(
             )
         }
 
-        if (isLoading) {
+        if (isSearching || isDownloading) {
             LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
         }
 
-        if (message != null && !isLoading) {
+        if (isDownloading) {
+            Text(
+                "Downloading image…",
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+
+        if (message != null && !isSearching && !isDownloading) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -100,7 +112,19 @@ fun ImageSearchScreen(
                     contentDescription = result.title,
                     modifier = Modifier
                         .aspectRatio(1f)
-                        .clickable { onImageSelected(result.imageUrl, query) },
+                        .clickable(enabled = !isDownloading && !isSearching) {
+                            scope.launch {
+                                isDownloading = true
+                                message = null
+                                val localPath = imageCacheService.downloadAndCacheImage(result.imageUrl)
+                                isDownloading = false
+                                if (localPath != null) {
+                                    onImageSelected(localPath, query)
+                                } else {
+                                    message = "Could not download that image — try another"
+                                }
+                            }
+                        },
                     contentScale = ContentScale.Crop
                 )
             }

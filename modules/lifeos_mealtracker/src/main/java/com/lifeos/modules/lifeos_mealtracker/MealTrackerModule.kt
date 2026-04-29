@@ -49,6 +49,7 @@ class MealTrackerModule : LifeOSModule {
     override val name: String = "Brutal Meal Tracker"
     override val icon: ImageVector = Icons.Filled.Restaurant
     override val description: String = "Track meals, calories, macros, and weight with brutal honesty"
+    override val shortDescription: String = "Meals, calories & macros"
     override val version: String = "1.0"
 
     @Composable

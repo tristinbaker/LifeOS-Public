@@ -44,6 +44,7 @@ class MediaLoggerModule : LifeOSModule {
     override val name: String = "Media Logger"
     override val icon: ImageVector = Icons.Filled.VideoLibrary
     override val description: String = "Track books, manga, movies, and games you've consumed"
+    override val shortDescription: String = "Books, manga & games"
     override val version: String = "1.0"
 
     @Composable
@@ -67,7 +68,7 @@ fun MediaLoggerContent(
     var editItemId by remember { mutableStateOf<Long?>(null) }
     var addVolumeSeriesId by remember { mutableStateOf<Long?>(null) }
 
-    var pendingCoverUrl by remember { mutableStateOf<String?>(null) }
+    var pendingCoverLocalPath by remember { mutableStateOf<String?>(null) }
     var pendingTitle by remember { mutableStateOf<String?>(null) }
     var pendingVolumeNumber by remember { mutableStateOf<String?>(null) }
     var imageSearchQuery by remember { mutableStateOf("") }
@@ -87,7 +88,17 @@ fun MediaLoggerContent(
     val gamesListState = rememberLazyListState()
 
     fun goToMain() {
-        pendingCoverUrl = null
+        // Cancel: delete any cover downloaded this session that wasn't saved
+        pendingCoverLocalPath?.let { viewModel.discardPendingCover(it) }
+        pendingCoverLocalPath = null
+        pendingTitle = null
+        pendingVolumeNumber = null
+        currentScreen = "main"
+    }
+
+    fun goToMainAfterSave() {
+        // Save: ViewModel now owns the path; don't delete it
+        pendingCoverLocalPath = null
         pendingTitle = null
         pendingVolumeNumber = null
         currentScreen = "main"
@@ -158,13 +169,13 @@ fun MediaLoggerContent(
                         books = state.books,
                         mangaSeries = state.mangaSeries,
                         expandedSeriesIds = state.expandedSeriesIds,
-                        onBookClick = { id -> pendingCoverUrl = null; editItemId = id; currentScreen = "edit_book" },
-                        onAddBook = { pendingCoverUrl = null; currentScreen = "add_book" },
-                        onAddSeries = { pendingCoverUrl = null; currentScreen = "add_series" },
+                        onBookClick = { id -> pendingCoverLocalPath = null; editItemId = id; currentScreen = "edit_book" },
+                        onAddBook = { pendingCoverLocalPath = null; currentScreen = "add_book" },
+                        onAddSeries = { pendingCoverLocalPath = null; currentScreen = "add_series" },
                         onSeriesClick = { viewModel.toggleSeriesExpanded(it) },
-                        onEditSeries = { id -> pendingCoverUrl = null; editItemId = id; currentScreen = "edit_series" },
-                        onAddVolume = { seriesId -> addVolumeSeriesId = seriesId; pendingCoverUrl = null; currentScreen = "add_volume" },
-                        onEditVolume = { id -> pendingCoverUrl = null; editItemId = id; currentScreen = "edit_volume" },
+                        onEditSeries = { id -> pendingCoverLocalPath = null; editItemId = id; currentScreen = "edit_series" },
+                        onAddVolume = { seriesId -> addVolumeSeriesId = seriesId; pendingCoverLocalPath = null; currentScreen = "add_volume" },
+                        onEditVolume = { id -> pendingCoverLocalPath = null; editItemId = id; currentScreen = "edit_volume" },
                         collapsedYears = booksCollapsedYears,
                         onCollapsedYearsChange = { booksCollapsedYears = it },
                         collapsedMonths = booksCollapsedMonths,
@@ -173,8 +184,8 @@ fun MediaLoggerContent(
                     )
                     MediaTab.MOVIES -> MoviesScreen(
                         movies = state.movies,
-                        onMovieClick = { id -> pendingCoverUrl = null; editItemId = id; currentScreen = "edit_movie" },
-                        onAddMovie = { pendingCoverUrl = null; currentScreen = "add_movie" },
+                        onMovieClick = { id -> pendingCoverLocalPath = null; editItemId = id; currentScreen = "edit_movie" },
+                        onAddMovie = { pendingCoverLocalPath = null; currentScreen = "add_movie" },
                         collapsedYears = moviesCollapsedYears,
                         onCollapsedYearsChange = { moviesCollapsedYears = it },
                         collapsedMonths = moviesCollapsedMonths,
@@ -183,8 +194,8 @@ fun MediaLoggerContent(
                     )
                     MediaTab.GAMES -> GamesScreen(
                         games = state.games,
-                        onGameClick = { id -> pendingCoverUrl = null; editItemId = id; currentScreen = "edit_game" },
-                        onAddGame = { pendingCoverUrl = null; currentScreen = "add_game" },
+                        onGameClick = { id -> pendingCoverLocalPath = null; editItemId = id; currentScreen = "edit_game" },
+                        onAddGame = { pendingCoverLocalPath = null; currentScreen = "add_game" },
                         collapsedYears = gamesCollapsedYears,
                         onCollapsedYearsChange = { gamesCollapsedYears = it },
                         collapsedMonths = gamesCollapsedMonths,
@@ -201,31 +212,25 @@ fun MediaLoggerContent(
                 }
             }
         } else {
-            when (currentScreen) {
-                "stats_detail" -> StatsDetailScreen(
-                    viewModel = statsViewModel,
-                    onNavigateBack = { currentScreen = "main" }
-                )
+            val effectiveScreen = if (currentScreen == "image_search") screenBeforeSearch else currentScreen
+            Box(modifier = Modifier.fillMaxSize()) {
+                when (effectiveScreen) {
+                    "stats_detail" -> StatsDetailScreen(
+                        viewModel = statsViewModel,
+                        onNavigateBack = { currentScreen = "main" }
+                    )
 
-                "image_search" -> ImageSearchScreen(
-                    initialQuery = imageSearchQuery,
-                    searchService = viewModel.imageSearchService,
-                    onImageSelected = { url, query ->
-                        pendingCoverUrl = url
-                        pendingTitle = query.removeSuffix(" movie poster").removeSuffix(" book cover").removeSuffix(" game box art").removeSuffix(COVER_SEARCH_SUFFIX).trim().ifBlank { null }
-                        currentScreen = screenBeforeSearch
-                    },
-                    onNavigateBack = { currentScreen = screenBeforeSearch }
-                )
-
-                "add_book" -> AddBookScreen(
-                    selectedCoverUrl = pendingCoverUrl,
+                    "add_book" -> AddBookScreen(
+                    selectedCoverLocalPath = pendingCoverLocalPath,
                     selectedTitle = pendingTitle,
+                    knownAuthors = state.distinctBookAuthors,
+                    knownSeriesNames = state.distinctBookSeriesNames,
+                    seriesNumbers = state.bookSeriesNumbers,
                     onSearchCover = { q -> goToImageSearch(if (q.isBlank()) "book cover" else "$q book cover", "add_book") },
                     onNavigateBack = { goToMain() },
-                    onSave = { title, coverUrl, rating, date, notes, _, author, _, _, _ ->
-                        viewModel.addMediaItem(title, coverUrl, rating, date, notes, MediaType.BOOK, author = author)
-                        goToMain()
+                    onSave = { title, coverUrl, coverLocalPath, rating, date, notes, _, author, _, _, _, seriesName, seriesNumber ->
+                        viewModel.addMediaItem(title, coverUrl, coverLocalPath, rating, date, notes, MediaType.BOOK, author = author, seriesName = seriesName, seriesNumber = seriesNumber)
+                        goToMainAfterSave()
                     }
                 )
 
@@ -240,26 +245,30 @@ fun MediaLoggerContent(
                         existingRating = item?.rating,
                         existingDate = item?.dateCompleted,
                         existingNotes = item?.notes ?: "",
-                        selectedCoverUrl = pendingCoverUrl,
+                        existingSeriesName = item?.seriesName ?: "",
+                        existingSeriesNumber = item?.seriesNumber?.toString() ?: "",
+                        knownAuthors = state.distinctBookAuthors,
+                        knownSeriesNames = state.distinctBookSeriesNames,
+                        selectedCoverLocalPath = pendingCoverLocalPath,
                         onSearchCover = { q -> goToImageSearch(if (q.isBlank()) "book cover" else "$q book cover", "edit_book") },
                         onNavigateBack = { goToMain() },
                         onNavigateBackWithDelete = { viewModel.deleteMediaItem(id); goToMain() },
-                        onSave = { title, coverUrl, rating, date, notes, _, author, _, _, _ ->
-                            viewModel.updateMediaItem(id, title, coverUrl, rating, date, notes, author = author)
-                            goToMain()
+                        onSave = { title, coverUrl, coverLocalPath, rating, date, notes, _, author, _, _, _, seriesName, seriesNumber ->
+                            viewModel.updateMediaItem(id, title, coverUrl, coverLocalPath, rating, date, notes, author = author, seriesName = seriesName, seriesNumber = seriesNumber)
+                            goToMainAfterSave()
                         }
                     )
                 }
 
                 "add_movie" -> AddBookScreen(
                     isMovie = true,
-                    selectedCoverUrl = pendingCoverUrl,
+                    selectedCoverLocalPath = pendingCoverLocalPath,
                     selectedTitle = pendingTitle,
                     onSearchCover = { q -> goToImageSearch(if (q.isBlank()) "movie poster" else "$q movie poster", "add_movie") },
                     onNavigateBack = { goToMain() },
-                    onSave = { title, coverUrl, rating, date, notes, _, _, isRewatch, _, _ ->
-                        viewModel.addMediaItem(title, coverUrl, rating, date, notes, MediaType.MOVIE, isRewatch = isRewatch)
-                        goToMain()
+                    onSave = { title, coverUrl, coverLocalPath, rating, date, notes, _, _, isRewatch, _, _, _, _ ->
+                        viewModel.addMediaItem(title, coverUrl, coverLocalPath, rating, date, notes, MediaType.MOVIE, isRewatch = isRewatch)
+                        goToMainAfterSave()
                     }
                 )
 
@@ -275,26 +284,26 @@ fun MediaLoggerContent(
                         existingDate = item?.dateCompleted,
                         existingNotes = item?.notes ?: "",
                         existingIsRewatch = item?.isRewatch ?: false,
-                        selectedCoverUrl = pendingCoverUrl,
+                        selectedCoverLocalPath = pendingCoverLocalPath,
                         onSearchCover = { q -> goToImageSearch(if (q.isBlank()) "movie poster" else "$q movie poster", "edit_movie") },
                         onNavigateBack = { goToMain() },
                         onNavigateBackWithDelete = { viewModel.deleteMediaItem(id); goToMain() },
-                        onSave = { title, coverUrl, rating, date, notes, _, _, isRewatch, _, _ ->
-                            viewModel.updateMediaItem(id, title, coverUrl, rating, date, notes, isRewatch = isRewatch)
-                            goToMain()
+                        onSave = { title, coverUrl, coverLocalPath, rating, date, notes, _, _, isRewatch, _, _, _, _ ->
+                            viewModel.updateMediaItem(id, title, coverUrl, coverLocalPath, rating, date, notes, isRewatch = isRewatch)
+                            goToMainAfterSave()
                         }
                     )
                 }
 
                 "add_game" -> AddBookScreen(
                     isGame = true,
-                    selectedCoverUrl = pendingCoverUrl,
+                    selectedCoverLocalPath = pendingCoverLocalPath,
                     selectedTitle = pendingTitle,
                     onSearchCover = { q -> goToImageSearch(if (q.isBlank()) "game box art" else "$q game box art", "add_game") },
                     onNavigateBack = { goToMain() },
-                    onSave = { title, coverUrl, rating, date, notes, platform, _, isRewatch, hasPlatinum, has100Percent ->
-                        viewModel.addMediaItem(title, coverUrl, rating, date, notes, MediaType.GAME, platform = platform, isRewatch = isRewatch, hasPlatinum = hasPlatinum, has100Percent = has100Percent)
-                        goToMain()
+                    onSave = { title, coverUrl, coverLocalPath, rating, date, notes, platform, _, isRewatch, hasPlatinum, has100Percent, _, _ ->
+                        viewModel.addMediaItem(title, coverUrl, coverLocalPath, rating, date, notes, MediaType.GAME, platform = platform, isRewatch = isRewatch, hasPlatinum = hasPlatinum, has100Percent = has100Percent)
+                        goToMainAfterSave()
                     }
                 )
 
@@ -313,26 +322,27 @@ fun MediaLoggerContent(
                         existingIsRewatch = item?.isRewatch ?: false,
                         existingHasPlatinum = item?.hasPlatinum ?: false,
                         existingHas100Percent = item?.has100Percent ?: false,
-                        selectedCoverUrl = pendingCoverUrl,
+                        selectedCoverLocalPath = pendingCoverLocalPath,
                         onSearchCover = { q -> goToImageSearch(if (q.isBlank()) "game box art" else "$q game box art", "edit_game") },
                         onNavigateBack = { goToMain() },
                         onNavigateBackWithDelete = { viewModel.deleteMediaItem(id); goToMain() },
-                        onSave = { title, coverUrl, rating, date, notes, platform, _, isRewatch, hasPlatinum, has100Percent ->
-                            viewModel.updateMediaItem(id, title, coverUrl, rating, date, notes, platform = platform, isRewatch = isRewatch, hasPlatinum = hasPlatinum, has100Percent = has100Percent)
-                            goToMain()
+                        onSave = { title, coverUrl, coverLocalPath, rating, date, notes, platform, _, isRewatch, hasPlatinum, has100Percent, _, _ ->
+                            viewModel.updateMediaItem(id, title, coverUrl, coverLocalPath, rating, date, notes, platform = platform, isRewatch = isRewatch, hasPlatinum = hasPlatinum, has100Percent = has100Percent)
+                            goToMainAfterSave()
                         }
                     )
                 }
 
                 "add_series" -> AddBookScreen(
                     isSeries = true,
-                    selectedCoverUrl = pendingCoverUrl,
+                    knownAuthors = state.distinctBookAuthors,
+                    selectedCoverLocalPath = pendingCoverLocalPath,
                     selectedTitle = pendingTitle,
                     onSearchCover = { q -> goToImageSearch(if (q.isBlank()) "cover" else "$q cover", "add_series") },
                     onNavigateBack = { goToMain() },
-                    onSave = { title, coverUrl, _, date, _, _, author, _, _, _ ->
-                        viewModel.addMangaSeries(title, coverUrl, author, date)
-                        goToMain()
+                    onSave = { title, coverUrl, coverLocalPath, _, date, _, _, author, _, _, _, _, _ ->
+                        viewModel.addMangaSeries(title, coverUrl, coverLocalPath, author, date)
+                        goToMainAfterSave()
                     }
                 )
 
@@ -346,13 +356,14 @@ fun MediaLoggerContent(
                         existingCoverLocalPath = series?.coverLocalPath ?: "",
                         existingAuthor = series?.author ?: "",
                         existingDate = series?.dateCompleted,
-                        selectedCoverUrl = pendingCoverUrl,
+                        knownAuthors = state.distinctBookAuthors,
+                        selectedCoverLocalPath = pendingCoverLocalPath,
                         onSearchCover = { q -> goToImageSearch(q.ifBlank { "manga cover" }, "edit_series") },
                         onNavigateBack = { goToMain() },
                         onNavigateBackWithDelete = { viewModel.deleteMangaSeries(id); goToMain() },
-                        onSave = { title, coverUrl, _, date, _, _, author, _, _, _ ->
-                            viewModel.updateMangaSeries(id, title, coverUrl, author, date)
-                            goToMain()
+                        onSave = { title, coverUrl, coverLocalPath, _, date, _, _, author, _, _, _, _, _ ->
+                            viewModel.updateMangaSeries(id, title, coverUrl, coverLocalPath, author, date)
+                            goToMainAfterSave()
                         }
                     )
                 }
@@ -361,20 +372,18 @@ fun MediaLoggerContent(
                     val series = state.mangaSeries.find { it.id == seriesId }
                     AddVolumeScreen(
                         seriesName = series?.title ?: "",
-                        selectedCoverUrl = pendingCoverUrl,
+                        selectedCoverLocalPath = pendingCoverLocalPath,
                         selectedVolumeNumber = pendingVolumeNumber,
                         onSearchCover = { q ->
-                            // Query is "$seriesName vol $volNum" — capture the number so it
-                            // survives the navigation to image search and back
                             pendingVolumeNumber = q.substringAfterLast(" vol ")
                                 .trim()
                                 .takeIf { it.isNotEmpty() && it.all(Char::isDigit) }
                             goToImageSearch(q.ifBlank { "manga volume cover" }, "add_volume")
                         },
                         onNavigateBack = { goToMain() },
-                        onSave = { volumeNumber, rating, date, coverUrl, notes ->
-                            viewModel.addMangaVolume(seriesId, volumeNumber, rating, date, coverUrl, notes)
-                            goToMain()
+                        onSave = { volumeNumber, rating, date, coverUrl, coverLocalPath, notes ->
+                            viewModel.addMangaVolume(seriesId, volumeNumber, rating, date, coverUrl, coverLocalPath, notes)
+                            goToMainAfterSave()
                         }
                     )
                 }
@@ -391,15 +400,33 @@ fun MediaLoggerContent(
                         existingCoverUrl = volume?.coverUrl ?: "",
                         existingCoverLocalPath = volume?.coverLocalPath ?: "",
                         existingNotes = volume?.notes ?: "",
-                        selectedCoverUrl = pendingCoverUrl,
+                        selectedCoverLocalPath = pendingCoverLocalPath,
                         onSearchCover = { q -> goToImageSearch(q.ifBlank { "manga volume cover" }, "edit_volume") },
                         onNavigateBack = { goToMain() },
                         onNavigateBackWithDelete = { viewModel.deleteMangaVolume(id); goToMain() },
-                        onSave = { volumeNumber, rating, date, coverUrl, notes ->
-                            viewModel.updateMangaVolume(id, volumeNumber, rating, date, coverUrl, notes)
-                            goToMain()
+                        onSave = { volumeNumber, rating, date, coverUrl, coverLocalPath, notes ->
+                            viewModel.updateMangaVolume(id, volumeNumber, rating, date, coverUrl, coverLocalPath, notes)
+                            goToMainAfterSave()
                         }
                     )
+                }
+            }
+
+                if (currentScreen == "image_search") {
+                    Surface(modifier = Modifier.fillMaxSize()) {
+                        ImageSearchScreen(
+                            initialQuery = imageSearchQuery,
+                            searchService = viewModel.imageSearchService,
+                            imageCacheService = viewModel.imageCacheService,
+                            onImageSelected = { localPath, query ->
+                                pendingCoverLocalPath?.let { viewModel.discardPendingCover(it) }
+                                pendingCoverLocalPath = localPath
+                                pendingTitle = query.removeSuffix(" movie poster").removeSuffix(" book cover").removeSuffix(" game box art").removeSuffix(COVER_SEARCH_SUFFIX).trim().ifBlank { null }
+                                currentScreen = screenBeforeSearch
+                            },
+                            onNavigateBack = { currentScreen = screenBeforeSearch }
+                        )
+                    }
                 }
             }
         }
@@ -421,12 +448,12 @@ private fun AddVolumeScreen(
     existingCoverUrl: String = "",
     existingCoverLocalPath: String = "",
     existingNotes: String = "",
-    selectedCoverUrl: String? = null,
+    selectedCoverLocalPath: String? = null,
     selectedVolumeNumber: String? = null,
     onSearchCover: ((String) -> Unit)? = null,
     onNavigateBack: () -> Unit,
     onNavigateBackWithDelete: (() -> Unit)? = null,
-    onSave: (volumeNumber: Int, rating: Float?, dateCompleted: Long?, coverUrl: String?, notes: String?) -> Unit
+    onSave: (volumeNumber: Int, rating: Float?, dateCompleted: Long?, coverUrl: String?, coverLocalPath: String?, notes: String?) -> Unit
 ) {
     var volumeNumber by remember { mutableStateOf(existingVolumeNumber) }
     var selectedRating by remember { mutableStateOf<Float?>(existingRating) }
@@ -436,10 +463,10 @@ private fun AddVolumeScreen(
     var notes by remember { mutableStateOf(existingNotes) }
     var showDatePicker by remember { mutableStateOf(false) }
 
-    LaunchedEffect(selectedCoverUrl) {
-        if (selectedCoverUrl != null) {
-            coverUrl = selectedCoverUrl
-            coverLocalPath = ""
+    LaunchedEffect(selectedCoverLocalPath) {
+        if (selectedCoverLocalPath != null) {
+            coverLocalPath = selectedCoverLocalPath
+            coverUrl = ""
         }
     }
 
@@ -551,7 +578,7 @@ private fun AddVolumeScreen(
         Button(
             onClick = {
                 volumeNumber.toIntOrNull()?.let { num ->
-                    onSave(num, selectedRating, selectedDate, coverUrl.ifBlank { null }, notes.ifBlank { null })
+                    onSave(num, selectedRating, selectedDate, coverUrl.ifBlank { null }, coverLocalPath.ifBlank { null }, notes.ifBlank { null })
                 }
             },
             enabled = volumeNumber.isNotBlank(),

@@ -8,6 +8,8 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.rememberTransformableState
+import androidx.compose.foundation.gestures.transformable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -28,7 +30,9 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
@@ -250,27 +254,49 @@ fun JournalEditorScreen(
         }
     }
 
-    // Full-screen swipeable image viewer
+    // Full-screen swipeable image viewer with pinch-to-zoom
     viewerIndex?.let { startIndex ->
         Dialog(
             onDismissRequest = { viewerIndex = null },
             properties = DialogProperties(usePlatformDefaultWidth = false)
         ) {
             val pagerState = rememberPagerState(initialPage = startIndex) { allViewerItems.size }
+            var scale by remember { mutableFloatStateOf(1f) }
+            var offset by remember { mutableStateOf(Offset.Zero) }
+
+            // Reset zoom when the user swipes to a different image
+            LaunchedEffect(pagerState.currentPage) {
+                scale = 1f
+                offset = Offset.Zero
+            }
+
             Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .background(Color.Black)
-                    .clickable { viewerIndex = null }
+                    .clickable(enabled = scale <= 1f) { viewerIndex = null }
             ) {
                 HorizontalPager(
                     state = pagerState,
+                    userScrollEnabled = scale <= 1f,
                     modifier = Modifier.fillMaxSize()
                 ) { page ->
+                    val transformState = rememberTransformableState { zoomChange, panChange, _ ->
+                        scale = (scale * zoomChange).coerceIn(1f, 5f)
+                        offset = if (scale > 1f) offset + panChange else Offset.Zero
+                    }
                     AsyncImage(
                         model = allViewerItems[page],
                         contentDescription = null,
-                        modifier = Modifier.fillMaxSize(),
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .graphicsLayer {
+                                scaleX = scale
+                                scaleY = scale
+                                translationX = offset.x
+                                translationY = offset.y
+                            }
+                            .transformable(state = transformState),
                         contentScale = ContentScale.Fit
                     )
                 }

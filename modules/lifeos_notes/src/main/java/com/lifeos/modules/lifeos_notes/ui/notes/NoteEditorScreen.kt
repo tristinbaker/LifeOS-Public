@@ -62,7 +62,11 @@ fun NoteEditorScreen(
     var showDatePicker by remember { mutableStateOf(false) }
     var showTimePicker by remember { mutableStateOf(false) }
     var selectedDateTime by remember { mutableStateOf<LocalDateTime?>(null) }
-    var selectedTab by remember { mutableStateOf(0) }
+    var selectedTab by remember(note?.id) {
+        val hasContent = note?.content?.isNotBlank() == true
+        val hasChecklist = parseChecklist(note?.checklistJson ?: "[]").isNotEmpty()
+        mutableStateOf(if (!hasContent && hasChecklist) 1 else 0)
+    }
 
     val notificationPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()

@@ -103,6 +103,7 @@ dependencies {
     implementation(project(":modules:lifeos_sleeptracker"))
     implementation(project(":modules:lifeos_journal"))
     implementation(project(":modules:lifeos_sports"))
+    implementation(project(":modules:lifeos_physicalmedia"))
 
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-test-manifest")

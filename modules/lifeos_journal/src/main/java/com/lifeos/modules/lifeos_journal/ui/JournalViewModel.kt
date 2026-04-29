@@ -41,6 +41,7 @@ class JournalViewModel @Inject constructor(
 
     init {
         loadData()
+        viewModelScope.launch { repository.compressExistingImages() }
     }
 
     private fun loadData() {

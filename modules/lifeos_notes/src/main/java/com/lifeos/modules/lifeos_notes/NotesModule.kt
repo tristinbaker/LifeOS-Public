@@ -34,6 +34,7 @@ class NotesModule : LifeOSModule {
     override val name: String = "Notes"
     override val icon: ImageVector = Icons.Default.Note
     override val description: String = "Keep track of things with notes and checklists"
+    override val shortDescription: String = "Notes & checklists"
     override val version: String = "1.0"
 
     @Composable

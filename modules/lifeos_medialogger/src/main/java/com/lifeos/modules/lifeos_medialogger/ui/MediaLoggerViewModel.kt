@@ -22,12 +22,21 @@ data class MediaLoggerState(
     val expandedSeriesIds: Set<Long> = emptySet(),
     val isLoading: Boolean = false,
     val error: String? = null
-)
+) {
+    val distinctBookAuthors: List<String>
+        get() = books.mapNotNull { it.author }.filter { it.isNotBlank() }.distinct().sorted()
+    val distinctBookSeriesNames: List<String>
+        get() = books.mapNotNull { it.seriesName }.filter { it.isNotBlank() }.distinct().sorted()
+    val bookSeriesNumbers: Map<String, List<Float>>
+        get() = books.filter { it.seriesName != null && it.seriesNumber != null }
+            .groupBy { it.seriesName!! }
+            .mapValues { (_, bs) -> bs.mapNotNull { it.seriesNumber }.sorted() }
+}
 
 @HiltViewModel
 class MediaLoggerViewModel @Inject constructor(
     private val repository: MediaLoggerRepository,
-    private val imageCacheService: ImageCacheService,
+    val imageCacheService: ImageCacheService,
     val imageSearchService: ImageSearchService
 ) : ViewModel() {
 
@@ -105,9 +114,16 @@ class MediaLoggerViewModel @Inject constructor(
         }
     }
 
+    fun discardPendingCover(localPath: String) {
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            imageCacheService.deleteCachedImage(localPath)
+        }
+    }
+
     fun addMediaItem(
         title: String,
         coverUrl: String?,
+        coverLocalPath: String?,
         rating: Float?,
         dateCompleted: Long?,
         notes: String?,
@@ -116,14 +132,15 @@ class MediaLoggerViewModel @Inject constructor(
         author: String? = null,
         isRewatch: Boolean = false,
         hasPlatinum: Boolean = false,
-        has100Percent: Boolean = false
+        has100Percent: Boolean = false,
+        seriesName: String? = null,
+        seriesNumber: Float? = null
     ) {
         viewModelScope.launch {
-            val localPath = coverUrl?.let { imageCacheService.downloadAndCacheImage(it) }
             val item = MediaItemEntity(
                 title = title,
                 coverUrl = coverUrl,
-                coverLocalPath = localPath,
+                coverLocalPath = coverLocalPath,
                 rating = rating,
                 dateCompleted = dateCompleted,
                 notes = notes,
@@ -132,7 +149,9 @@ class MediaLoggerViewModel @Inject constructor(
                 author = author,
                 isRewatch = isRewatch,
                 hasPlatinum = hasPlatinum,
-                has100Percent = has100Percent
+                has100Percent = has100Percent,
+                seriesName = seriesName,
+                seriesNumber = seriesNumber
             )
             repository.insertMediaItem(item)
         }
@@ -142,6 +161,7 @@ class MediaLoggerViewModel @Inject constructor(
         id: Long,
         title: String,
         coverUrl: String?,
+        coverLocalPath: String?,
         rating: Float?,
         dateCompleted: Long?,
         notes: String?,
@@ -149,21 +169,21 @@ class MediaLoggerViewModel @Inject constructor(
         author: String? = null,
         isRewatch: Boolean = false,
         hasPlatinum: Boolean = false,
-        has100Percent: Boolean = false
+        has100Percent: Boolean = false,
+        seriesName: String? = null,
+        seriesNumber: Float? = null
     ) {
         viewModelScope.launch {
             val existing = repository.getMediaItemById(id) ?: return@launch
-            var localPath = existing.coverLocalPath
 
-            if (coverUrl != existing.coverUrl) {
+            if (coverLocalPath != existing.coverLocalPath) {
                 existing.coverLocalPath?.let { imageCacheService.deleteCachedImage(it) }
-                localPath = coverUrl?.let { imageCacheService.downloadAndCacheImage(it) }
             }
 
             repository.updateMediaItem(existing.copy(
                 title = title,
-                coverUrl = coverUrl,
-                coverLocalPath = localPath,
+                coverUrl = if (coverLocalPath != existing.coverLocalPath) coverUrl else existing.coverUrl,
+                coverLocalPath = coverLocalPath,
                 rating = rating,
                 dateCompleted = dateCompleted,
                 notes = notes,
@@ -171,7 +191,9 @@ class MediaLoggerViewModel @Inject constructor(
                 author = author,
                 isRewatch = isRewatch,
                 hasPlatinum = hasPlatinum,
-                has100Percent = has100Percent
+                has100Percent = has100Percent,
+                seriesName = seriesName,
+                seriesNumber = seriesNumber
             ))
         }
     }
@@ -184,33 +206,30 @@ class MediaLoggerViewModel @Inject constructor(
         }
     }
 
-    fun addMangaSeries(title: String, coverUrl: String?, author: String?, dateCompleted: Long?) {
+    fun addMangaSeries(title: String, coverUrl: String?, coverLocalPath: String?, author: String?, dateCompleted: Long?) {
         viewModelScope.launch {
-            val localPath = coverUrl?.let { imageCacheService.downloadAndCacheImage(it) }
             repository.insertMangaSeries(MangaSeriesEntity(
                 title = title,
                 coverUrl = coverUrl,
-                coverLocalPath = localPath,
+                coverLocalPath = coverLocalPath,
                 author = author,
                 dateCompleted = dateCompleted
             ))
         }
     }
 
-    fun updateMangaSeries(id: Long, title: String, coverUrl: String?, author: String?, dateCompleted: Long?) {
+    fun updateMangaSeries(id: Long, title: String, coverUrl: String?, coverLocalPath: String?, author: String?, dateCompleted: Long?) {
         viewModelScope.launch {
             val existing = repository.getMangaSeriesById(id) ?: return@launch
-            var localPath = existing.coverLocalPath
 
-            if (coverUrl != existing.coverUrl) {
+            if (coverLocalPath != existing.coverLocalPath) {
                 existing.coverLocalPath?.let { imageCacheService.deleteCachedImage(it) }
-                localPath = coverUrl?.let { imageCacheService.downloadAndCacheImage(it) }
             }
 
             repository.updateMangaSeries(existing.copy(
                 title = title,
-                coverUrl = coverUrl,
-                coverLocalPath = localPath,
+                coverUrl = if (coverLocalPath != existing.coverLocalPath) coverUrl else existing.coverUrl,
+                coverLocalPath = coverLocalPath,
                 author = author,
                 dateCompleted = dateCompleted
             ))
@@ -223,17 +242,17 @@ class MediaLoggerViewModel @Inject constructor(
         rating: Float?,
         dateCompleted: Long?,
         coverUrl: String? = null,
+        coverLocalPath: String? = null,
         notes: String? = null
     ) {
         viewModelScope.launch {
-            val localPath = coverUrl?.let { imageCacheService.downloadAndCacheImage(it) }
             repository.insertMangaVolume(MangaVolumeEntity(
                 seriesId = seriesId,
                 volumeNumber = volumeNumber,
                 rating = rating,
                 dateCompleted = dateCompleted,
                 coverUrl = coverUrl,
-                coverLocalPath = localPath,
+                coverLocalPath = coverLocalPath,
                 notes = notes
             ))
         }
@@ -245,23 +264,22 @@ class MediaLoggerViewModel @Inject constructor(
         rating: Float?,
         dateCompleted: Long?,
         coverUrl: String? = null,
+        coverLocalPath: String? = null,
         notes: String? = null
     ) {
         viewModelScope.launch {
             val existing = repository.getMangaVolumeById(id) ?: return@launch
-            var localPath = existing.coverLocalPath
 
-            if (coverUrl != existing.coverUrl) {
+            if (coverLocalPath != existing.coverLocalPath) {
                 existing.coverLocalPath?.let { imageCacheService.deleteCachedImage(it) }
-                localPath = coverUrl?.let { imageCacheService.downloadAndCacheImage(it) }
             }
 
             repository.updateMangaVolume(existing.copy(
                 volumeNumber = volumeNumber,
                 rating = rating,
                 dateCompleted = dateCompleted,
-                coverUrl = coverUrl,
-                coverLocalPath = localPath,
+                coverUrl = if (coverLocalPath != existing.coverLocalPath) coverUrl else existing.coverUrl,
+                coverLocalPath = coverLocalPath,
                 notes = notes
             ))
         }
@@ -298,6 +316,8 @@ private fun MediaItemEntity.toMediaItem() = MediaItem(
     isRewatch = isRewatch,
     hasPlatinum = hasPlatinum,
     has100Percent = has100Percent,
+    seriesName = seriesName,
+    seriesNumber = seriesNumber,
     createdAt = createdAt
 )
 

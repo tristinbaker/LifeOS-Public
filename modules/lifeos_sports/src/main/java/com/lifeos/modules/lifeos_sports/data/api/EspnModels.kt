@@ -58,7 +58,8 @@ data class EspnCompetitor(
 
 @Serializable
 data class EspnProbable(
-    val athlete: EspnAthlete = EspnAthlete()
+    val athlete: EspnAthlete = EspnAthlete(),
+    val statistics: List<EspnStat> = emptyList()
 )
 
 @Serializable

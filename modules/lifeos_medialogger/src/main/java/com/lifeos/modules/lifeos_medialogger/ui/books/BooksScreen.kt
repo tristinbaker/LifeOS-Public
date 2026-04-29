@@ -92,13 +92,31 @@ fun BooksScreen(
         }
     }.mapValues { (_, monthMap) ->
         monthMap.mapValues { (_, items) ->
-            items.sortedByDescending { item ->
+            val sorted = items.sortedByDescending { item ->
                 when (item) {
                     is BookItem -> item.book.dateCompleted ?: 0L
                     is SeriesItem -> item.date ?: 0L
                     else -> 0L
                 }
             }
+            // Within the same series, re-order books by series number ascending
+            val seriesGroups = sorted.filterIsInstance<BookItem>()
+                .filter { it.book.seriesName != null }
+                .groupBy { it.book.seriesName!! }
+            val seriesPositions = mutableMapOf<String, Int>()
+            sorted.forEachIndexed { i, item ->
+                if (item is BookItem && item.book.seriesName != null) {
+                    seriesPositions.getOrPut(item.book.seriesName) { i }
+                }
+            }
+            val nonSeriesItems = sorted.filter { it !is BookItem || it.book.seriesName == null }
+            val reordered = nonSeriesItems.toMutableList<Any>()
+            seriesPositions.keys.sorted().forEach { name ->
+                val group = seriesGroups[name]?.sortedBy { it.book.seriesNumber ?: Float.MAX_VALUE } ?: return@forEach
+                val insertAt = minOf(seriesPositions[name]!!, reordered.size)
+                reordered.addAll(insertAt, group)
+            }
+            reordered
         }.toSortedMap(compareByDescending { it })
     }.toSortedMap(compareByDescending { it })
 

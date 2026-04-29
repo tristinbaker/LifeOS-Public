@@ -27,6 +27,7 @@ class SleepModule : LifeOSModule {
     override val name: String = "Sleep"
     override val icon: ImageVector = Icons.Default.Bedtime
     override val description: String = "Track your sleep patterns and quality"
+    override val shortDescription: String = "Sleep patterns & quality"
     override val version: String = "1.0"
 
     @Composable

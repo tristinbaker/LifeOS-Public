@@ -27,6 +27,7 @@ class HabitsModule : LifeOSModule {
     override val name: String = "Habits"
     override val icon: ImageVector = Icons.Default.FitnessCenter
     override val description: String = "Track your daily habits and build streaks"
+    override val shortDescription: String = "Habits & streaks"
     override val version: String = "1.0"
 
     @Composable

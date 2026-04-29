@@ -63,7 +63,7 @@ private fun UpcomingContent(game: GameScore) {
             }
             if (!game.awayTeam.probablePitcher.isNullOrBlank()) {
                 Text(
-                    text = game.awayTeam.probablePitcher,
+                    text = if (!game.awayTeam.pitcherEra.isNullOrBlank()) "${game.awayTeam.probablePitcher} (${game.awayTeam.pitcherEra} ERA)" else game.awayTeam.probablePitcher,
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center
@@ -113,7 +113,7 @@ private fun UpcomingContent(game: GameScore) {
             }
             if (!game.homeTeam.probablePitcher.isNullOrBlank()) {
                 Text(
-                    text = game.homeTeam.probablePitcher,
+                    text = if (!game.homeTeam.pitcherEra.isNullOrBlank()) "${game.homeTeam.probablePitcher} (${game.homeTeam.pitcherEra} ERA)" else game.homeTeam.probablePitcher,
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center

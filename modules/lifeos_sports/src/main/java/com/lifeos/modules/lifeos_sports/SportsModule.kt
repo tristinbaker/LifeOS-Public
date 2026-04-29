@@ -35,6 +35,7 @@ class SportsModule : LifeOSModule {
     override val name: String = "Sports"
     override val icon: ImageVector = Icons.Filled.SportsSoccer
     override val description: String = "Scores, standings, and last game recaps for your favorite teams"
+    override val shortDescription: String = "Scores & standings"
     override val version: String = "1.0"
 
     @Composable

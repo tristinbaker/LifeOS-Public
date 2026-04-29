@@ -1,6 +1,9 @@
 package com.lifeos.modules.lifeos_journal.data.repository
 
 import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.media.ExifInterface
 import android.net.Uri
 import com.lifeos.modules.lifeos_journal.data.local.JournalEntryDao
 import com.lifeos.modules.lifeos_journal.data.local.JournalEntryEntity
@@ -9,12 +12,17 @@ import com.lifeos.modules.lifeos_journal.data.local.JournalImageEntity
 import com.lifeos.modules.lifeos_journal.data.local.JournalSettingsDao
 import com.lifeos.modules.lifeos_journal.data.local.JournalSettingsEntity
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.withContext
 import java.io.File
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import javax.inject.Inject
 import javax.inject.Singleton
+
+private const val MAX_IMAGE_PX = 1920
+private const val JPEG_QUALITY = 80
 
 @Singleton
 class JournalRepository @Inject constructor(
@@ -53,29 +61,44 @@ class JournalRepository @Inject constructor(
     fun getImagesForEntry(entryId: Long): Flow<List<JournalImageEntity>> =
         journalImageDao.getImagesForEntry(entryId)
 
-    suspend fun saveImages(entryId: Long, uris: List<Uri>): List<JournalImageEntity> {
-        val dir = File(context.filesDir, "journal_images").also { it.mkdirs() }
-        return uris.mapIndexed { index, uri ->
-            val mimeType = context.contentResolver.getType(uri) ?: "image/jpeg"
-            val ext = when (mimeType) {
-                "image/png" -> "png"
-                "image/gif" -> "gif"
-                "image/webp" -> "webp"
-                else -> "jpg"
+    suspend fun saveImages(entryId: Long, uris: List<Uri>): List<JournalImageEntity> =
+        withContext(Dispatchers.IO) {
+            val dir = File(context.filesDir, "journal_images").also { it.mkdirs() }
+            uris.mapIndexed { index, uri ->
+                val mimeType = context.contentResolver.getType(uri) ?: "image/jpeg"
+                val isGif = mimeType == "image/gif"
+                val file = File(dir, "${System.currentTimeMillis()}_$index.${if (isGif) "gif" else "jpg"}")
+
+                if (isGif) {
+                    context.contentResolver.openInputStream(uri)?.use { input ->
+                        file.outputStream().use { output -> input.copyTo(output) }
+                    }
+                } else {
+                    // Read EXIF orientation before decoding (decodeStream discards it)
+                    val orientation = context.contentResolver.openInputStream(uri)?.use {
+                        ExifInterface(it).getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL)
+                    } ?: ExifInterface.ORIENTATION_NORMAL
+
+                    val bitmap = context.contentResolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it) }
+                    if (bitmap != null) {
+                        compressToFile(bitmap, file)
+                        preserveOrientation(file, orientation)
+                    } else {
+                        context.contentResolver.openInputStream(uri)?.use { input ->
+                            file.outputStream().use { output -> input.copyTo(output) }
+                        }
+                    }
+                }
+
+                val entity = JournalImageEntity(
+                    entryId = entryId,
+                    localPath = file.absolutePath,
+                    createdAt = System.currentTimeMillis()
+                )
+                val id = journalImageDao.insertImage(entity)
+                entity.copy(id = id)
             }
-            val file = File(dir, "${System.currentTimeMillis()}_$index.$ext")
-            context.contentResolver.openInputStream(uri)?.use { input ->
-                file.outputStream().use { output -> input.copyTo(output) }
-            }
-            val entity = JournalImageEntity(
-                entryId = entryId,
-                localPath = file.absolutePath,
-                createdAt = System.currentTimeMillis()
-            )
-            val id = journalImageDao.insertImage(entity)
-            entity.copy(id = id)
         }
-    }
 
     suspend fun deleteImage(imageId: Long) {
         val path = journalImageDao.getLocalPath(imageId)
@@ -95,6 +118,65 @@ class JournalRepository @Inject constructor(
             weekEnd.format(dateFormatter)
         )
         return entries.flatMap { entry -> journalImageDao.getImagesForEntryOnce(entry.id) }
+    }
+
+    // One-time background migration: compress all existing journal images in-place.
+    suspend fun compressExistingImages() = withContext(Dispatchers.IO) {
+        val prefs = context.getSharedPreferences("journal_prefs", Context.MODE_PRIVATE)
+        if (prefs.getBoolean("images_compressed_v3", false)) return@withContext
+
+        val dir = File(context.filesDir, "journal_images")
+        if (dir.exists()) {
+            dir.listFiles()?.forEach { file ->
+                if (file.extension.lowercase() == "gif") return@forEach
+
+                val orientation = try {
+                    ExifInterface(file.absolutePath).getAttributeInt(
+                        ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL
+                    )
+                } catch (_: Exception) { ExifInterface.ORIENTATION_NORMAL }
+
+                val bitmap = BitmapFactory.decodeFile(file.absolutePath) ?: return@forEach
+                val tmp = File(file.parent, "${file.nameWithoutExtension}.tmp")
+                try {
+                    compressToFile(bitmap, tmp)
+                    preserveOrientation(tmp, orientation)
+                    tmp.renameTo(file)
+                } catch (_: Exception) {
+                    tmp.delete()
+                }
+            }
+        }
+
+        prefs.edit().putBoolean("images_compressed_v3", true).apply()
+    }
+
+    // Write the original EXIF orientation tag back onto the compressed output file so that
+    // image viewers (Coil, gallery apps) continue to display it with the correct rotation.
+    private fun preserveOrientation(file: File, orientation: Int) {
+        if (orientation == ExifInterface.ORIENTATION_NORMAL || orientation == ExifInterface.ORIENTATION_UNDEFINED) return
+        try {
+            ExifInterface(file.absolutePath).apply {
+                setAttribute(ExifInterface.TAG_ORIENTATION, orientation.toString())
+                saveAttributes()
+            }
+        } catch (_: Exception) {}
+    }
+
+    // Scales to MAX_IMAGE_PX on the long edge, compresses to JPEG, and recycles src.
+    private fun compressToFile(src: Bitmap, file: File) {
+        val w = src.width
+        val h = src.height
+        val bitmap = if (w > MAX_IMAGE_PX || h > MAX_IMAGE_PX) {
+            val scale = MAX_IMAGE_PX.toFloat() / maxOf(w, h)
+            val scaled = Bitmap.createScaledBitmap(src, (w * scale).toInt(), (h * scale).toInt(), true)
+            src.recycle()
+            scaled
+        } else {
+            src
+        }
+        file.outputStream().use { out -> bitmap.compress(Bitmap.CompressFormat.JPEG, JPEG_QUALITY, out) }
+        bitmap.recycle()
     }
 }
 

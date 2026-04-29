@@ -253,6 +253,7 @@ Row(
                 items(ModuleRegistry.modules) { module ->
                     ModuleCard(
                         module = module,
+                        compact = gridColumns >= 3,
                         onClick = { onModuleClick(module.id) }
                     )
                 }
@@ -756,7 +757,8 @@ private fun HomeSettingsDialog(
 fun ModuleCard(
     module: LifeOSModule,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    compact: Boolean = false
 ) {
     Card(
         modifier = modifier
@@ -803,10 +805,11 @@ fun ModuleCard(
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = module.description,
+                        text = if (compact) module.shortDescription else module.description,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 3
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
             }
