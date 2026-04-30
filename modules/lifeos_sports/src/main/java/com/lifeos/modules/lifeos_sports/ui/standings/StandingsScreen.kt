@@ -93,16 +93,17 @@ fun StandingsScreen(viewModel: StandingsViewModel = hiltViewModel()) {
 
 @Composable
 private fun StandingsTable(standings: List<Standing>, favoriteTeamIds: Set<String>) {
+    val showL10 = standings.any { it.lastTen.isNotBlank() }
     Card(
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
     ) {
         Column {
-            StandingsHeader()
+            StandingsHeader(showL10 = showL10)
             HorizontalDivider()
             standings.forEachIndexed { index, standing ->
                 val isFavorite = standing.teamId in favoriteTeamIds
-                StandingsRow(standing = standing, isFavorite = isFavorite)
+                StandingsRow(standing = standing, isFavorite = isFavorite, showL10 = showL10)
                 if (index < standings.lastIndex) HorizontalDivider(thickness = 0.5.dp)
             }
         }
@@ -110,7 +111,7 @@ private fun StandingsTable(standings: List<Standing>, favoriteTeamIds: Set<Strin
 }
 
 @Composable
-private fun StandingsHeader() {
+private fun StandingsHeader(showL10: Boolean) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -133,11 +134,14 @@ private fun StandingsHeader() {
         Text("L", style = MaterialTheme.typography.labelSmall, modifier = Modifier.width(32.dp), textAlign = TextAlign.End, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Text("PCT", style = MaterialTheme.typography.labelSmall, modifier = Modifier.width(44.dp), textAlign = TextAlign.End, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Text("GB", style = MaterialTheme.typography.labelSmall, modifier = Modifier.width(36.dp), textAlign = TextAlign.End, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        if (showL10) {
+            Text("L10", style = MaterialTheme.typography.labelSmall, modifier = Modifier.width(44.dp), textAlign = TextAlign.End, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
     }
 }
 
 @Composable
-private fun StandingsRow(standing: Standing, isFavorite: Boolean) {
+private fun StandingsRow(standing: Standing, isFavorite: Boolean, showL10: Boolean) {
     val bg = if (isFavorite) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
     else MaterialTheme.colorScheme.surfaceVariant
 
@@ -186,5 +190,13 @@ private fun StandingsRow(standing: Standing, isFavorite: Boolean) {
             modifier = Modifier.width(36.dp),
             textAlign = TextAlign.End
         )
+        if (showL10) {
+            Text(
+                text = standing.lastTen.ifBlank { "-" },
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.width(44.dp),
+                textAlign = TextAlign.End
+            )
+        }
     }
 }

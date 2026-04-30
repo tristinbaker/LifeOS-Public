@@ -40,6 +40,8 @@ data class PhysicalMovieEntity(
     val limitedEdition: Boolean = false,
     val steelbook: Boolean = false,
     val slipcover: Boolean = false,
+    val boutiqueLabel: String? = null,
+    val catalogNumber: String? = null,
     val coverUrl: String? = null,
     val coverLocalPath: String? = null,
     val createdAt: Long = System.currentTimeMillis()
@@ -50,6 +52,19 @@ data class PhysicalGameEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val title: String,
     val system: GameSystem,
+    val coverUrl: String? = null,
+    val coverLocalPath: String? = null,
+    val createdAt: Long = System.currentTimeMillis()
+)
+
+@Entity(tableName = "physical_tv_series")
+data class PhysicalTvSeriesEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val title: String,
+    val format: MovieFormat,
+    val completeSeries: Boolean = false,
+    val seriesName: String? = null,
+    val seriesNumber: Float? = null,
     val coverUrl: String? = null,
     val coverLocalPath: String? = null,
     val createdAt: Long = System.currentTimeMillis()

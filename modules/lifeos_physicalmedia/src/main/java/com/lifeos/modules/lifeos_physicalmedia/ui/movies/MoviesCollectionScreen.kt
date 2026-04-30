@@ -20,7 +20,7 @@ import com.lifeos.modules.lifeos_physicalmedia.domain.model.PhysicalMovie
 import com.lifeos.modules.lifeos_physicalmedia.domain.model.displayName
 import com.lifeos.modules.lifeos_physicalmedia.ui.components.PhysicalItemRow
 
-enum class MovieSortMode { BY_FORMAT, BY_TITLE }
+enum class MovieSortMode { BY_FORMAT, BY_TITLE, BY_BOUTIQUE_LABEL }
 
 @Composable
 fun MoviesCollectionScreen(
@@ -35,7 +35,8 @@ fun MoviesCollectionScreen(
 
     val sortedGroups: List<Pair<String, List<PhysicalMovie>>> = remember(movies, sortMode, searchQuery) {
         val filtered = if (searchQuery.isBlank()) movies else movies.filter { movie ->
-            movie.title.contains(searchQuery, ignoreCase = true)
+            movie.title.contains(searchQuery, ignoreCase = true) ||
+                (movie.boutiqueLabel?.contains(searchQuery, ignoreCase = true) == true)
         }
         when (sortMode) {
             MovieSortMode.BY_FORMAT -> filtered
@@ -49,6 +50,18 @@ fun MoviesCollectionScreen(
                 .groupBy { groupLetter(titleSortKey(it.title)) }
                 .entries.sortedWith(compareBy { if (it.key == "#") "zzz" else it.key })
                 .map { it.key to it.value }
+
+            MovieSortMode.BY_BOUTIQUE_LABEL -> {
+                val withLabel = filtered.filter { it.boutiqueLabel != null }
+                    .sortedBy { titleSortKey(it.title).lowercase() }
+                    .groupBy { it.boutiqueLabel!! }
+                    .entries.sortedBy { it.key }
+                    .map { it.key to it.value }
+                val noLabel = filtered.filter { it.boutiqueLabel == null }
+                    .sortedBy { titleSortKey(it.title).lowercase() }
+                if (noLabel.isNotEmpty()) withLabel + ("No Label" to noLabel)
+                else withLabel
+            }
         }
     }
 
@@ -97,6 +110,11 @@ fun MoviesCollectionScreen(
                             selected = sortMode == MovieSortMode.BY_TITLE,
                             onClick = { sortMode = MovieSortMode.BY_TITLE; collapsedGroups = emptySet() },
                             label = { Text("By Title") }
+                        )
+                        FilterChip(
+                            selected = sortMode == MovieSortMode.BY_BOUTIQUE_LABEL,
+                            onClick = { sortMode = MovieSortMode.BY_BOUTIQUE_LABEL; collapsedGroups = emptySet() },
+                            label = { Text("By Label") }
                         )
                     }
                     val allGroupKeys = sortedGroups.map { it.first }.toSet()
@@ -163,6 +181,10 @@ fun MoviesCollectionScreen(
                                 title = movie.title,
                                 metadata = buildString {
                                     append(movie.format.displayName())
+                                    if (movie.boutiqueLabel != null) {
+                                        append(" · ${movie.boutiqueLabel}")
+                                        if (movie.catalogNumber != null) append(" (${movie.catalogNumber})")
+                                    }
                                     if (movie.steelbook) append(" · Steelbook")
                                     if (movie.slipcover) append(" · Slipcover")
                                     if (movie.limitedEdition) append(" · Limited")

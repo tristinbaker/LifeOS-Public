@@ -67,6 +67,7 @@ class GameStartNotificationWorker(
     }
 
     companion object {
+        const val TAG = "game_start_notification"
         const val CHANNEL_ID = "sports_game_alerts"
         const val KEY_GAME_ID = "game_id"
         const val KEY_HOME_TEAM = "home_team"

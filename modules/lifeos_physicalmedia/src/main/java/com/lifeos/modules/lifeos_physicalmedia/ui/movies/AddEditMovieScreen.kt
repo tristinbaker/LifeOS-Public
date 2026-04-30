@@ -12,6 +12,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
@@ -29,22 +30,34 @@ fun AddEditMovieScreen(
     existingLimitedEdition: Boolean = false,
     existingSteelbook: Boolean = false,
     existingSlipcover: Boolean = false,
+    existingBoutiqueLabel: String = "",
+    existingCatalogNumber: String = "",
     existingCoverUrl: String = "",
     existingCoverLocalPath: String = "",
+    knownBoutiqueLabels: List<String> = emptyList(),
     selectedCoverLocalPath: String? = null,
     onSearchCover: (query: String) -> Unit,
     onNavigateBack: () -> Unit,
     onNavigateBackWithDelete: (() -> Unit)? = null,
-    onSave: (title: String, format: MovieFormat, limitedEdition: Boolean, steelbook: Boolean, slipcover: Boolean, coverUrl: String?, coverLocalPath: String?) -> Unit
+    onSave: (title: String, format: MovieFormat, limitedEdition: Boolean, steelbook: Boolean, slipcover: Boolean, boutiqueLabel: String?, catalogNumber: String?, coverUrl: String?, coverLocalPath: String?) -> Unit
 ) {
     var title by remember { mutableStateOf(existingTitle) }
     var format by remember { mutableStateOf(existingFormat) }
     var limitedEdition by remember { mutableStateOf(existingLimitedEdition) }
     var steelbook by remember { mutableStateOf(existingSteelbook) }
     var slipcover by remember { mutableStateOf(existingSlipcover) }
+    var inBoutiqueLabel by remember { mutableStateOf(existingBoutiqueLabel.isNotBlank()) }
+    var boutiqueLabelText by remember { mutableStateOf(existingBoutiqueLabel) }
+    var catalogNumberText by remember { mutableStateOf(existingCatalogNumber) }
     var coverUrl by remember { mutableStateOf(existingCoverUrl) }
     var coverLocalPath by remember { mutableStateOf(existingCoverLocalPath) }
     var formatMenuExpanded by remember { mutableStateOf(false) }
+    var boutiqueLabelFieldFocused by remember { mutableStateOf(false) }
+
+    val boutiqueLabelSuggestions = remember(boutiqueLabelText, knownBoutiqueLabels) {
+        if (boutiqueLabelText.isBlank()) emptyList()
+        else knownBoutiqueLabels.filter { it.contains(boutiqueLabelText, ignoreCase = true) && !it.equals(boutiqueLabelText, ignoreCase = true) }
+    }
 
     LaunchedEffect(selectedCoverLocalPath) {
         if (selectedCoverLocalPath != null) {
@@ -151,6 +164,60 @@ fun AddEditMovieScreen(
             Checkbox(checked = slipcover, onCheckedChange = { slipcover = it })
         }
 
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text("Boutique label?", style = MaterialTheme.typography.bodyLarge)
+            Checkbox(checked = inBoutiqueLabel, onCheckedChange = {
+                inBoutiqueLabel = it
+                if (!it) { boutiqueLabelText = ""; catalogNumberText = "" }
+            })
+        }
+
+        if (inBoutiqueLabel) {
+            ExposedDropdownMenuBox(
+                expanded = boutiqueLabelFieldFocused && boutiqueLabelSuggestions.isNotEmpty(),
+                onExpandedChange = {}
+            ) {
+                OutlinedTextField(
+                    value = boutiqueLabelText,
+                    onValueChange = { boutiqueLabelText = it },
+                    label = { Text("Boutique Label") },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .menuAnchor()
+                        .onFocusChanged { boutiqueLabelFieldFocused = it.isFocused },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words)
+                )
+                if (boutiqueLabelSuggestions.isNotEmpty()) {
+                    ExposedDropdownMenu(
+                        expanded = boutiqueLabelFieldFocused,
+                        onDismissRequest = { boutiqueLabelFieldFocused = false }
+                    ) {
+                        boutiqueLabelSuggestions.forEach { suggestion ->
+                            DropdownMenuItem(
+                                text = { Text(suggestion) },
+                                onClick = { boutiqueLabelText = suggestion; boutiqueLabelFieldFocused = false }
+                            )
+                        }
+                    }
+                }
+            }
+            Spacer(Modifier.height(8.dp))
+            OutlinedTextField(
+                value = catalogNumberText,
+                onValueChange = { catalogNumberText = it },
+                label = { Text("Catalog Number") },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Characters)
+            )
+            Spacer(Modifier.height(8.dp))
+        }
+
         Spacer(Modifier.height(4.dp))
 
         if (coverModel != null) {
@@ -175,7 +242,11 @@ fun AddEditMovieScreen(
         Spacer(Modifier.height(16.dp))
 
         Button(
-            onClick = { onSave(title, format, limitedEdition, steelbook, slipcover, coverUrl.ifBlank { null }, coverLocalPath.ifBlank { null }) },
+            onClick = {
+                val resolvedLabel = if (inBoutiqueLabel) boutiqueLabelText.ifBlank { null } else null
+                val resolvedCatalog = if (inBoutiqueLabel) catalogNumberText.ifBlank { null } else null
+                onSave(title, format, limitedEdition, steelbook, slipcover, resolvedLabel, resolvedCatalog, coverUrl.ifBlank { null }, coverLocalPath.ifBlank { null })
+            },
             enabled = title.isNotBlank(),
             modifier = Modifier.fillMaxWidth()
         ) {

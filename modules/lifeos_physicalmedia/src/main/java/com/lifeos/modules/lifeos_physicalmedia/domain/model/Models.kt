@@ -23,6 +23,8 @@ data class PhysicalMovie(
     val limitedEdition: Boolean = false,
     val steelbook: Boolean = false,
     val slipcover: Boolean = false,
+    val boutiqueLabel: String? = null,
+    val catalogNumber: String? = null,
     val coverUrl: String? = null,
     val coverLocalPath: String? = null,
     val createdAt: Long = System.currentTimeMillis()
@@ -37,4 +39,16 @@ data class PhysicalGame(
     val createdAt: Long = System.currentTimeMillis()
 )
 
-enum class PhysicalMediaTab { BOOKS, MOVIES, GAMES, STATS }
+data class PhysicalTvSeries(
+    val id: Long = 0,
+    val title: String,
+    val format: MovieFormat,
+    val completeSeries: Boolean = false,
+    val seriesName: String? = null,
+    val seriesNumber: Float? = null,
+    val coverUrl: String? = null,
+    val coverLocalPath: String? = null,
+    val createdAt: Long = System.currentTimeMillis()
+)
+
+enum class PhysicalMediaTab { BOOKS, MOVIES, GAMES, TV_SERIES, STATS }

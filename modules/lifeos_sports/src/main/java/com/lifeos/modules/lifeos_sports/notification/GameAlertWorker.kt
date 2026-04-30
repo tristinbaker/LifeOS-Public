@@ -18,6 +18,10 @@ import java.util.concurrent.TimeUnit
 class GameAlertWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
 
     override suspend fun doWork(): Result {
+        // Cancel all previously scheduled game-start workers before rescheduling fresh ones.
+        WorkManager.getInstance(applicationContext)
+            .cancelAllWorkByTag(GameStartNotificationWorker.TAG)
+
         val notifIds = applicationContext.sportsNotifDataStore.data
             .map { it[stringSetPreferencesKey("notif_team_ids")] ?: emptySet() }
             .first()
@@ -25,7 +29,8 @@ class GameAlertWorker(context: Context, params: WorkerParameters) : CoroutineWor
         if (notifIds.isEmpty()) return Result.success()
 
         val byLeague = notifIds.mapNotNull { id ->
-            val underscore = id.indexOf('_')
+            // Use lastIndexOf so league names with underscores (e.g. NCAA_FOOTBALL) parse correctly.
+            val underscore = id.lastIndexOf('_')
             if (underscore < 1) return@mapNotNull null
             val leagueName = id.substring(0, underscore)
             val teamId = id.substring(underscore + 1)
@@ -60,10 +65,11 @@ class GameAlertWorker(context: Context, params: WorkerParameters) : CoroutineWor
 
                 WorkManager.getInstance(applicationContext).enqueueUniqueWork(
                     "game_start_${event.id}",
-                    ExistingWorkPolicy.KEEP,
+                    ExistingWorkPolicy.REPLACE,
                     OneTimeWorkRequestBuilder<GameStartNotificationWorker>()
                         .setInitialDelay(delayMs.coerceAtLeast(0L), TimeUnit.MILLISECONDS)
                         .setInputData(data)
+                        .addTag(GameStartNotificationWorker.TAG)
                         .build()
                 )
             }

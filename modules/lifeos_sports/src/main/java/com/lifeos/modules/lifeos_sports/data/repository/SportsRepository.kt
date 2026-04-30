@@ -249,6 +249,7 @@ class SportsRepository @Inject constructor(
                     ties = stat("ties")?.toIntOrNull() ?: 0,
                     winPercent = stat("winPercent") ?: stat("pointPercentage") ?: stat("points") ?: ".000",
                     gamesBack = stat("gamesBehind") ?: "-",
+                    lastTen = stat("Last Ten Games") ?: stat("last10") ?: stat("l10") ?: "",
                     rank = index + 1,
                     divisionName = name
                 )

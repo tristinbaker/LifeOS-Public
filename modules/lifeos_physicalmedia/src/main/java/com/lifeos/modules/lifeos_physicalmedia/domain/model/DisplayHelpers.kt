@@ -65,4 +65,4 @@ fun gameSystemGroups(): List<Pair<String, List<GameSystem>>> = listOf(
 
 fun bookSearchQuery(title: String): String = "$title book cover"
 fun movieSearchQuery(title: String, format: MovieFormat): String = "$title ${format.displayName()} movie cover"
-fun gameSearchQuery(title: String, system: GameSystem): String = "$title ${system.displayName()} game cover"
+fun gameSearchQuery(title: String, system: GameSystem): String = "$title ${system.displayName()} box art"

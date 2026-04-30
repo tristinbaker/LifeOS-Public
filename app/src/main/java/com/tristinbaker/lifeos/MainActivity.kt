@@ -36,18 +36,24 @@ import com.lifeos.modules.lifeos_medialogger.MediaLoggerModule
 import com.lifeos.modules.lifeos_sleeptracker.SleepModule
 import com.lifeos.modules.lifeos_journal.JournalModule
 import com.lifeos.modules.lifeos_sports.SportsModule
+import com.lifeos.modules.lifeos_sports.notification.GameAlertScheduler
 import com.lifeos.modules.lifeos_physicalmedia.PhysicalMediaModule
 import com.tristinbaker.lifeos.backup.BackupPreferences
 import com.tristinbaker.lifeos.ui.home.HomeScreen
 import com.tristinbaker.lifeos.ui.theme.LifeOSTheme
 import dagger.hilt.android.AndroidEntryPoint
+import javax.inject.Inject
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 
 @AndroidEntryPoint
 class MainActivity : AppCompatActivity() {
+    @Inject lateinit var gameAlertScheduler: GameAlertScheduler
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        gameAlertScheduler.scheduleDailyCheck()
+        gameAlertScheduler.scheduleNow()
 
         ModuleRegistry.register(MealTrackerModule())
         ModuleRegistry.register(NotesModule())

@@ -13,6 +13,7 @@ data class Standing(
     val ties: Int,
     val winPercent: String,
     val gamesBack: String,
+    val lastTen: String = "",
     val rank: Int,
     val divisionName: String
 )

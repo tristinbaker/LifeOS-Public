@@ -29,7 +29,10 @@ import com.lifeos.modules.lifeos_physicalmedia.ui.games.AddEditGameScreen
 import com.lifeos.modules.lifeos_physicalmedia.ui.games.GamesCollectionScreen
 import com.lifeos.modules.lifeos_physicalmedia.ui.movies.AddEditMovieScreen
 import com.lifeos.modules.lifeos_physicalmedia.ui.movies.MoviesCollectionScreen
+import com.lifeos.modules.lifeos_physicalmedia.ui.stats.PhysicalStatsDetailScreen
 import com.lifeos.modules.lifeos_physicalmedia.ui.stats.PhysicalStatsScreen
+import com.lifeos.modules.lifeos_physicalmedia.ui.tvseries.AddEditTvSeriesScreen
+import com.lifeos.modules.lifeos_physicalmedia.ui.tvseries.TvSeriesCollectionScreen
 
 class PhysicalMediaModule : LifeOSModule {
     override val id: String = "physicalmedia"
@@ -128,6 +131,7 @@ fun PhysicalMediaContent(
                                         PhysicalMediaTab.BOOKS -> "Books"
                                         PhysicalMediaTab.MOVIES -> "Movies"
                                         PhysicalMediaTab.GAMES -> "Games"
+                                        PhysicalMediaTab.TV_SERIES -> "TV"
                                         PhysicalMediaTab.STATS -> "Stats"
                                     }
                                 )
@@ -159,7 +163,23 @@ fun PhysicalMediaContent(
                             onAddGame = { pendingCoverLocalPath = null; currentScreen = "add_game" },
                             listState = gamesListState
                         )
-                        PhysicalMediaTab.STATS -> PhysicalStatsScreen(stats = state.stats)
+                        PhysicalMediaTab.TV_SERIES -> TvSeriesCollectionScreen(
+                            tvSeries = state.tvSeries,
+                            onAdd = { pendingCoverLocalPath = null; currentScreen = "add_tv" },
+                            onEdit = { id -> pendingCoverLocalPath = null; editItemId = id; currentScreen = "edit_tv" }
+                        )
+                        PhysicalMediaTab.STATS -> PhysicalStatsScreen(
+                            stats = state.stats,
+                            gamePrices = state.gamePrices,
+                            isFetchingPrices = state.isFetchingPrices,
+                            pricesFetchCount = state.pricesFetchCount,
+                            totalGames = state.games.size,
+                            onFetchPrices = { viewModel.fetchGamePrices() },
+                            onDrillDown = { filter ->
+                                viewModel.setDrillDown(filter)
+                                currentScreen = "stats_detail"
+                            }
+                        )
                     }
                 }
             }
@@ -205,11 +225,13 @@ fun PhysicalMediaContent(
             }
 
             "add_movie" -> AddEditMovieScreen(
+                existingFormat = state.lastMovieFormat,
+                knownBoutiqueLabels = state.distinctMovieBoutiqueLabels,
                 selectedCoverLocalPath = pendingCoverLocalPath,
                 onSearchCover = { query -> goToImageSearch(query, "add_movie") },
                 onNavigateBack = { goToMain() },
-                onSave = { title, format, limited, steelbook, slipcover, coverUrl, coverLocalPath ->
-                    viewModel.addMovie(title, format, limited, steelbook, slipcover, coverUrl, coverLocalPath)
+                onSave = { title, format, limited, steelbook, slipcover, boutiqueLabel, catalogNumber, coverUrl, coverLocalPath ->
+                    viewModel.addMovie(title, format, limited, steelbook, slipcover, boutiqueLabel, catalogNumber, coverUrl, coverLocalPath)
                     goToMainAfterSave()
                 }
             )
@@ -223,8 +245,11 @@ fun PhysicalMediaContent(
                     existingLimitedEdition = movie?.limitedEdition ?: false,
                     existingSteelbook = movie?.steelbook ?: false,
                     existingSlipcover = movie?.slipcover ?: false,
+                    existingBoutiqueLabel = movie?.boutiqueLabel ?: "",
+                    existingCatalogNumber = movie?.catalogNumber ?: "",
                     existingCoverUrl = movie?.coverUrl ?: "",
                     existingCoverLocalPath = movie?.coverLocalPath ?: "",
+                    knownBoutiqueLabels = state.distinctMovieBoutiqueLabels,
                     selectedCoverLocalPath = pendingCoverLocalPath,
                     onSearchCover = { query -> goToImageSearch(query, "edit_movie") },
                     onNavigateBack = { goToMain() },
@@ -232,14 +257,15 @@ fun PhysicalMediaContent(
                         editItemId?.let { viewModel.deleteMovie(it) }
                         goToMain()
                     },
-                    onSave = { title, format, limited, steelbook, slipcover, coverUrl, coverLocalPath ->
-                        editItemId?.let { viewModel.updateMovie(it, title, format, limited, steelbook, slipcover, coverUrl, coverLocalPath) }
+                    onSave = { title, format, limited, steelbook, slipcover, boutiqueLabel, catalogNumber, coverUrl, coverLocalPath ->
+                        editItemId?.let { viewModel.updateMovie(it, title, format, limited, steelbook, slipcover, boutiqueLabel, catalogNumber, coverUrl, coverLocalPath) }
                         goToMainAfterSave()
                     }
                 )
             }
 
             "add_game" -> AddEditGameScreen(
+                existingSystem = state.lastGameSystem,
                 selectedCoverLocalPath = pendingCoverLocalPath,
                 onSearchCover = { query -> goToImageSearch(query, "add_game") },
                 onNavigateBack = { goToMain() },
@@ -266,6 +292,62 @@ fun PhysicalMediaContent(
                     },
                     onSave = { title, system, coverUrl, coverLocalPath ->
                         editItemId?.let { viewModel.updateGame(it, title, system, coverUrl, coverLocalPath) }
+                        goToMainAfterSave()
+                    }
+                )
+            }
+
+            "add_tv" -> AddEditTvSeriesScreen(
+                knownSeriesNames = state.distinctTvSeriesNames,
+                seriesNumbers = state.tvSeriesNumbers,
+                selectedCoverLocalPath = pendingCoverLocalPath,
+                onSearchCover = { query -> goToImageSearch(query, "add_tv") },
+                onNavigateBack = { goToMain() },
+                onSave = { title, format, completeSeries, seriesName, seriesNumber, coverUrl, coverLocalPath ->
+                    viewModel.addTvSeries(title, format, completeSeries, seriesName, seriesNumber, coverUrl, coverLocalPath)
+                    goToMainAfterSave()
+                }
+            )
+
+            "stats_detail" -> {
+                val drillDown = state.drillDown
+                if (drillDown != null) {
+                    PhysicalStatsDetailScreen(
+                        drillDown = drillDown,
+                        books = state.books,
+                        movies = state.movies,
+                        games = state.games,
+                        tvSeries = state.tvSeries,
+                        onNavigateBack = {
+                            viewModel.setDrillDown(null)
+                            currentScreen = "main"
+                        }
+                    )
+                } else {
+                    currentScreen = "main"
+                }
+            }
+
+            "edit_tv" -> {
+                val show = editItemId?.let { viewModel.getTvSeriesById(it) }
+                AddEditTvSeriesScreen(
+                    itemId = editItemId,
+                    existingTitle = show?.title ?: "",
+                    existingFormat = show?.format ?: MovieFormat.BLU_RAY,
+                    existingCompleteSeries = show?.completeSeries ?: false,
+                    existingSeriesName = show?.seriesName ?: "",
+                    existingSeriesNumber = show?.seriesNumber?.toString() ?: "",
+                    knownSeriesNames = state.distinctTvSeriesNames,
+                    seriesNumbers = state.tvSeriesNumbers,
+                    selectedCoverLocalPath = pendingCoverLocalPath,
+                    onSearchCover = { query -> goToImageSearch(query, "edit_tv") },
+                    onNavigateBack = { goToMain() },
+                    onNavigateBackWithDelete = {
+                        editItemId?.let { viewModel.deleteTvSeries(it) }
+                        goToMain()
+                    },
+                    onSave = { title, format, completeSeries, seriesName, seriesNumber, coverUrl, coverLocalPath ->
+                        editItemId?.let { viewModel.updateTvSeries(it, title, format, completeSeries, seriesName, seriesNumber, coverUrl, coverLocalPath) }
                         goToMainAfterSave()
                     }
                 )

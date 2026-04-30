@@ -1,5 +1,6 @@
 package com.lifeos.modules.lifeos_physicalmedia.ui.stats
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -13,11 +14,22 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.lifeos.modules.lifeos_physicalmedia.data.local.BookFormat
 import com.lifeos.modules.lifeos_physicalmedia.data.local.MovieFormat
+import com.lifeos.modules.lifeos_physicalmedia.domain.model.PhysicalMediaDrillDown
 import com.lifeos.modules.lifeos_physicalmedia.domain.model.PhysicalMediaStats
 import com.lifeos.modules.lifeos_physicalmedia.domain.model.displayName
+import java.text.NumberFormat
+import java.util.Locale
 
 @Composable
-fun PhysicalStatsScreen(stats: PhysicalMediaStats) {
+fun PhysicalStatsScreen(
+    stats: PhysicalMediaStats,
+    gamePrices: Map<Long, Double?> = emptyMap(),
+    isFetchingPrices: Boolean = false,
+    pricesFetchCount: Int = 0,
+    totalGames: Int = 0,
+    onFetchPrices: () -> Unit = {},
+    onDrillDown: (PhysicalMediaDrillDown) -> Unit = {}
+) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -33,6 +45,7 @@ fun PhysicalStatsScreen(stats: PhysicalMediaStats) {
                 StatItem("Books", stats.totalBooks)
                 StatItem("Movies", stats.totalMovies)
                 StatItem("Games", stats.totalGames)
+                StatItem("TV", stats.totalTvSeries)
             }
             Spacer(Modifier.height(12.dp))
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
@@ -43,18 +56,52 @@ fun PhysicalStatsScreen(stats: PhysicalMediaStats) {
 
         StatsCard(title = "Books by Format", icon = Icons.Default.Book) {
             BookFormat.entries.forEach { fmt ->
-                StatRow(fmt.displayName(), stats.booksByFormat[fmt] ?: 0)
+                val count = stats.booksByFormat[fmt] ?: 0
+                StatRow(fmt.displayName(), count,
+                    onClick = if (count > 0) { { onDrillDown(PhysicalMediaDrillDown.BooksByFormat(fmt)) } } else null)
             }
         }
 
         StatsCard(title = "Movies by Format", icon = Icons.Default.Movie) {
             MovieFormat.entries.forEach { fmt ->
-                StatRow(fmt.displayName(), stats.moviesByFormat[fmt] ?: 0)
+                val count = stats.moviesByFormat[fmt] ?: 0
+                StatRow(fmt.displayName(), count,
+                    onClick = if (count > 0) { { onDrillDown(PhysicalMediaDrillDown.MoviesByFormat(fmt)) } } else null)
             }
             if (stats.steelbookCount > 0 || stats.limitedEditionCount > 0) {
                 HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-                StatRow("Steelbooks", stats.steelbookCount)
-                StatRow("Limited Editions", stats.limitedEditionCount)
+                StatRow("Steelbooks", stats.steelbookCount,
+                    onClick = if (stats.steelbookCount > 0) { { onDrillDown(PhysicalMediaDrillDown.MoviesSteelbooks) } } else null)
+                StatRow("Limited Editions", stats.limitedEditionCount,
+                    onClick = if (stats.limitedEditionCount > 0) { { onDrillDown(PhysicalMediaDrillDown.MoviesLimitedEditions) } } else null)
+            }
+        }
+
+        if (stats.boutiqueLabelCount > 0) {
+            StatsCard(title = "Movies by Boutique Label", icon = Icons.Default.LocalOffer) {
+                StatRow("Boutique", stats.boutiqueLabelCount,
+                    onClick = { onDrillDown(PhysicalMediaDrillDown.MoviesBoutique) })
+                StatRow("Standard", stats.standardMovieCount,
+                    onClick = if (stats.standardMovieCount > 0) { { onDrillDown(PhysicalMediaDrillDown.MoviesStandard) } } else null)
+                if (stats.moviesByBoutiqueLabel.isNotEmpty()) {
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                    stats.moviesByBoutiqueLabel.forEach { (label, count) ->
+                        StatRow(label, count, onClick = { onDrillDown(PhysicalMediaDrillDown.MoviesByBoutiqueLabel(label)) })
+                    }
+                }
+            }
+        }
+
+        StatsCard(title = "TV by Format", icon = Icons.Default.Tv) {
+            MovieFormat.entries.forEach { fmt ->
+                val count = stats.tvSeriesByFormat[fmt] ?: 0
+                StatRow(fmt.displayName(), count,
+                    onClick = if (count > 0) { { onDrillDown(PhysicalMediaDrillDown.TvByFormat(fmt)) } } else null)
+            }
+            if (stats.completeTvSeriesCount > 0) {
+                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                StatRow("Complete Series", stats.completeTvSeriesCount,
+                    onClick = { onDrillDown(PhysicalMediaDrillDown.TvCompleteSeries) })
             }
         }
 
@@ -65,7 +112,9 @@ fun PhysicalStatsScreen(stats: PhysicalMediaStats) {
                     .sortedByDescending { it.value }
                     .forEach { (system, count) ->
                         Row(
-                            modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
+                            modifier = Modifier.fillMaxWidth()
+                                .clickable { onDrillDown(PhysicalMediaDrillDown.GamesBySystem(system)) }
+                                .padding(vertical = 2.dp),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
@@ -85,11 +134,22 @@ fun PhysicalStatsScreen(stats: PhysicalMediaStats) {
                                 }
                                 Text(system.displayName(), style = MaterialTheme.typography.bodyMedium)
                             }
-                            Text(
-                                count.toString(),
-                                style = MaterialTheme.typography.bodyMedium,
-                                fontWeight = FontWeight.Bold
-                            )
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Text(
+                                    count.toString(),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Icon(
+                                    Icons.Default.ChevronRight,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
                         }
                     }
             }
@@ -100,6 +160,67 @@ fun PhysicalStatsScreen(stats: PhysicalMediaStats) {
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+            }
+        }
+
+        if (totalGames > 0) {
+            val currency = NumberFormat.getCurrencyInstance(Locale.US)
+            val matched = gamePrices.values.filterNotNull()
+            val total = matched.sum()
+            val hasFetched = gamePrices.isNotEmpty() || (!isFetchingPrices && pricesFetchCount > 0)
+
+            StatsCard(title = "Game Collection Value", icon = Icons.Default.Sell) {
+                if (isFetchingPrices) {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        LinearProgressIndicator(
+                            progress = { if (totalGames > 0) pricesFetchCount.toFloat() / totalGames else 0f },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        Text(
+                            "Fetching CIB prices… $pricesFetchCount / $totalGames",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                } else if (hasFetched) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column {
+                            Text(
+                                currency.format(total),
+                                style = MaterialTheme.typography.headlineMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                            Text(
+                                "${matched.size} of $totalGames games matched (CIB)",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        IconButton(onClick = onFetchPrices) {
+                            Icon(Icons.Default.Refresh, contentDescription = "Refresh prices")
+                        }
+                    }
+                } else {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            "Estimate CIB sell value",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Button(onClick = onFetchPrices) {
+                            Text("Fetch")
+                        }
+                    }
+                }
             }
         }
 
@@ -146,16 +267,32 @@ private fun StatItem(label: String, value: Int) {
 }
 
 @Composable
-private fun StatRow(label: String, value: Int) {
+private fun StatRow(label: String, value: Int, onClick: (() -> Unit)? = null) {
     Row(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
-        horizontalArrangement = Arrangement.SpaceBetween
+        modifier = Modifier.fillMaxWidth()
+            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
+            .padding(vertical = 2.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
     ) {
         Text(label, style = MaterialTheme.typography.bodyMedium)
-        Text(
-            value.toString(),
-            style = MaterialTheme.typography.bodyMedium,
-            fontWeight = FontWeight.Bold
-        )
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Text(
+                value.toString(),
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Bold
+            )
+            if (onClick != null) {
+                Icon(
+                    Icons.Default.ChevronRight,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(16.dp)
+                )
+            }
+        }
     }
 }

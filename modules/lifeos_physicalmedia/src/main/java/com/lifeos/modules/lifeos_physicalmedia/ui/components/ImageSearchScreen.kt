@@ -37,6 +37,21 @@ fun ImageSearchScreen(
 
     fun doSearch() {
         if (query.isBlank()) return
+        val trimmed = query.trim()
+        if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+            scope.launch {
+                isDownloading = true
+                message = null
+                val localPath = imageCacheService.downloadAndCacheImage(trimmed)
+                isDownloading = false
+                if (localPath != null) {
+                    onImageSelected(localPath, trimmed)
+                } else {
+                    message = "Could not download image from that URL"
+                }
+            }
+            return
+        }
         scope.launch {
             isSearching = true
             message = null
@@ -65,7 +80,7 @@ fun ImageSearchScreen(
                 value = query,
                 onValueChange = { query = it },
                 modifier = Modifier.weight(1f),
-                placeholder = { Text("Search images...") },
+                placeholder = { Text("Search images or paste a URL…") },
                 singleLine = true,
                 trailingIcon = {
                     IconButton(onClick = { doSearch() }) {
