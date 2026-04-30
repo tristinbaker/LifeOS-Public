@@ -37,7 +37,9 @@ import com.lifeos.modules.lifeos_sleeptracker.SleepModule
 import com.lifeos.modules.lifeos_journal.JournalModule
 import com.lifeos.modules.lifeos_sports.SportsModule
 import com.lifeos.modules.lifeos_sports.notification.GameAlertScheduler
+import com.lifeos.modules.lifeos_financetracker.notification.RecurringTransactionScheduler
 import com.lifeos.modules.lifeos_physicalmedia.PhysicalMediaModule
+import com.lifeos.modules.lifeos_financetracker.FinanceTrackerModule
 import com.tristinbaker.lifeos.backup.BackupPreferences
 import com.tristinbaker.lifeos.ui.home.HomeScreen
 import com.tristinbaker.lifeos.ui.theme.LifeOSTheme
@@ -49,11 +51,13 @@ import kotlinx.coroutines.runBlocking
 @AndroidEntryPoint
 class MainActivity : AppCompatActivity() {
     @Inject lateinit var gameAlertScheduler: GameAlertScheduler
+    @Inject lateinit var recurringTransactionScheduler: RecurringTransactionScheduler
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         gameAlertScheduler.scheduleDailyCheck()
         gameAlertScheduler.scheduleNow()
+        recurringTransactionScheduler.scheduleDailyCheck()
 
         ModuleRegistry.register(MealTrackerModule())
         ModuleRegistry.register(NotesModule())
@@ -63,6 +67,7 @@ class MainActivity : AppCompatActivity() {
         ModuleRegistry.register(SportsModule())
         ModuleRegistry.register(MediaLoggerModule())
         ModuleRegistry.register(PhysicalMediaModule())
+        ModuleRegistry.register(FinanceTrackerModule())
 
         val initialModule = intent?.getStringExtra("module")
         val initialNoteId = if (initialModule == "notes") {
@@ -238,6 +243,14 @@ fun LifeOSNavHost(
 
         composable("physicalmedia") {
             val module = ModuleRegistry.getModule("physicalmedia")
+            module?.Content(
+                onNavigateBack = { navController.popBackStack() },
+                initialId = null
+            )
+        }
+
+        composable("finance") {
+            val module = ModuleRegistry.getModule("finance")
             module?.Content(
                 onNavigateBack = { navController.popBackStack() },
                 initialId = null
