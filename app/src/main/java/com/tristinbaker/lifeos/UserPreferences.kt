@@ -21,6 +21,7 @@ object UserPreferences {
     private val LONGITUDE = doublePreferencesKey("longitude")
     private val SHOW_WEATHER = booleanPreferencesKey("show_weather")
     private val GRID_COLUMNS = intPreferencesKey("grid_columns")
+    private val MODULE_ORDER = stringPreferencesKey("module_order")
 
     fun userName(context: Context): Flow<String> =
         context.userDataStore.data.map { it[USER_NAME] ?: "" }
@@ -40,6 +41,9 @@ object UserPreferences {
     fun gridColumns(context: Context): Flow<Int> =
         context.userDataStore.data.map { it[GRID_COLUMNS] ?: 2 }
 
+    fun moduleOrder(context: Context): Flow<String> =
+        context.userDataStore.data.map { it[MODULE_ORDER] ?: "" }
+
     suspend fun setUserName(context: Context, name: String) {
         context.userDataStore.edit { it[USER_NAME] = name }
     }
@@ -58,5 +62,9 @@ object UserPreferences {
 
     suspend fun setGridColumns(context: Context, columns: Int) {
         context.userDataStore.edit { it[GRID_COLUMNS] = columns }
+    }
+
+    suspend fun setModuleOrder(context: Context, order: String) {
+        context.userDataStore.edit { it[MODULE_ORDER] = order }
     }
 }

@@ -23,9 +23,15 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.ui.draw.shadow
+import sh.calvin.reorderable.ReorderableItem
+import sh.calvin.reorderable.rememberReorderableLazyGridState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Backup
@@ -57,6 +63,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -83,6 +90,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun HomeScreen(
     onModuleClick: (String) -> Unit,
@@ -111,6 +119,19 @@ fun HomeScreen(
     val longitude by UserPreferences.longitude(context).collectAsStateWithLifecycle(initialValue = null)
     val showWeather by UserPreferences.showWeather(context).collectAsStateWithLifecycle(initialValue = false)
     val gridColumns by UserPreferences.gridColumns(context).collectAsStateWithLifecycle(initialValue = 2)
+    val savedModuleOrder by UserPreferences.moduleOrder(context).collectAsStateWithLifecycle(initialValue = "")
+
+    val modules = remember { mutableStateListOf<LifeOSModule>().also { it.addAll(ModuleRegistry.modules) } }
+    LaunchedEffect(savedModuleOrder) {
+        if (savedModuleOrder.isNotEmpty()) {
+            val savedIds = savedModuleOrder.split(",").filter { it.isNotBlank() }
+            val moduleMap = ModuleRegistry.modules.associateBy { it.id }
+            val reordered = savedIds.mapNotNull { moduleMap[it] } +
+                    ModuleRegistry.modules.filter { it.id !in savedIds }
+            modules.clear()
+            modules.addAll(reordered)
+        }
+    }
 
     var weatherData by remember { mutableStateOf<WeatherData?>(null) }
     var isLoadingWeather by remember { mutableStateOf(false) }
@@ -241,8 +262,14 @@ Row(
 
             Spacer(modifier = Modifier.height(16.dp))
 
+            val lazyGridState = rememberLazyGridState()
+            val reorderState = rememberReorderableLazyGridState(lazyGridState) { from, to ->
+                modules.apply { add(to.index, removeAt(from.index)) }
+            }
+
             LazyVerticalGrid(
                 columns = GridCells.Fixed(gridColumns),
+                state = lazyGridState,
                 contentPadding = PaddingValues(
                     top = 8.dp,
                     bottom = 8.dp + WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
@@ -250,12 +277,27 @@ Row(
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                items(ModuleRegistry.modules) { module ->
-                    ModuleCard(
-                        module = module,
-                        compact = gridColumns >= 3,
-                        onClick = { onModuleClick(module.id) }
-                    )
+                items(modules, key = { it.id }) { module ->
+                    ReorderableItem(reorderState, key = module.id) { isDragging ->
+                        val elevation by animateDpAsState(if (isDragging) 8.dp else 0.dp, label = "drag-elevation")
+                        ModuleCard(
+                            module = module,
+                            compact = gridColumns >= 3,
+                            onClick = { onModuleClick(module.id) },
+                            modifier = Modifier
+                                .shadow(elevation)
+                                .longPressDraggableHandle(
+                                    onDragStopped = {
+                                        scope.launch {
+                                            UserPreferences.setModuleOrder(
+                                                context,
+                                                modules.joinToString(",") { it.id }
+                                            )
+                                        }
+                                    }
+                                )
+                        )
+                    }
                 }
             }
         }

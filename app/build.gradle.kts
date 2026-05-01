@@ -94,6 +94,7 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.2")
     implementation("androidx.work:work-runtime-ktx:2.9.0")
     implementation("androidx.documentfile:documentfile:1.0.1")
+    implementation("sh.calvin.reorderable:reorderable:2.1.0")
 
     implementation(project(":modules:lifeos_core"))
     implementation(project(":modules:lifeos_mealtracker"))
