@@ -1,6 +1,8 @@
 package com.lifeos.modules.lifeos_physicalmedia.data.local
 
 import androidx.room.Entity
+import androidx.room.ForeignKey
+import androidx.room.Index
 import androidx.room.PrimaryKey
 
 enum class BookFormat { HARDCOVER, SOFTCOVER, LEATHERBACK }
@@ -44,7 +46,24 @@ data class PhysicalMovieEntity(
     val catalogNumber: String? = null,
     val coverUrl: String? = null,
     val coverLocalPath: String? = null,
+    val isCollection: Boolean = false,
     val createdAt: Long = System.currentTimeMillis()
+)
+
+@Entity(
+    tableName = "physical_movie_collection_items",
+    foreignKeys = [ForeignKey(
+        entity = PhysicalMovieEntity::class,
+        parentColumns = ["id"],
+        childColumns = ["movieId"],
+        onDelete = ForeignKey.CASCADE
+    )],
+    indices = [Index("movieId")]
+)
+data class PhysicalMovieCollectionItemEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val movieId: Long,
+    val title: String
 )
 
 @Entity(tableName = "physical_games")
@@ -54,7 +73,24 @@ data class PhysicalGameEntity(
     val system: GameSystem,
     val coverUrl: String? = null,
     val coverLocalPath: String? = null,
+    val isCollection: Boolean = false,
     val createdAt: Long = System.currentTimeMillis()
+)
+
+@Entity(
+    tableName = "physical_game_collection_items",
+    foreignKeys = [ForeignKey(
+        entity = PhysicalGameEntity::class,
+        parentColumns = ["id"],
+        childColumns = ["gameId"],
+        onDelete = ForeignKey.CASCADE
+    )],
+    indices = [Index("gameId")]
+)
+data class PhysicalGameCollectionItemEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val gameId: Long,
+    val title: String
 )
 
 @Entity(tableName = "physical_tv_series")

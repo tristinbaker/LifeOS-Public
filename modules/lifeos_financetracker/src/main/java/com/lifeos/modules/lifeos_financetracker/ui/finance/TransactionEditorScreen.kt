@@ -62,6 +62,7 @@ fun TransactionEditorScreen(
     val isSaveEnabled = amountText.toDoubleOrNull()?.let { it > 0 } == true &&
             selectedAccountId != null &&
             selectedCategoryId != null &&
+            noteText.isNotBlank() &&
             (!isTransfer || selectedToAccountId != null)
 
     val displayFormatter = DateTimeFormatter.ofPattern("MMMM d, yyyy")
@@ -197,8 +198,8 @@ fun TransactionEditorScreen(
             OutlinedTextField(
                 value = noteText,
                 onValueChange = { noteText = it },
-                label = { Text("Note (optional)") },
-                maxLines = 3,
+                label = { Text("Vendor") },
+                singleLine = true,
                 modifier = Modifier.fillMaxWidth()
             )
 

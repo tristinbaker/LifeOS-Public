@@ -120,6 +120,8 @@ class FinanceRepository @Inject constructor(
 
     // ---- Transactions ----
 
+    fun getAllTransactions(): Flow<List<TransactionEntity>> = transactionDao.getAllTransactions()
+
     fun getTransactionsForMonth(month: YearMonth): Flow<List<TransactionEntity>> {
         val start = month.atDay(1).format(dateFormatter)
         val end = month.atEndOfMonth().format(dateFormatter)

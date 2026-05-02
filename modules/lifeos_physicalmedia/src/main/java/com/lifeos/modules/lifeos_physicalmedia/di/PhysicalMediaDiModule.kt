@@ -21,7 +21,7 @@ object PhysicalMediaDiModule {
             context,
             PhysicalMediaDatabase::class.java,
             "physicalmedia_v1.db"
-        ).addMigrations(PM_MIGRATION_1_2, PM_MIGRATION_2_3, PM_MIGRATION_3_4, PM_MIGRATION_4_5).build()
+        ).addMigrations(PM_MIGRATION_1_2, PM_MIGRATION_2_3, PM_MIGRATION_3_4, PM_MIGRATION_4_5, PM_MIGRATION_5_6).build()
     }
 
     @Provides
@@ -32,6 +32,12 @@ object PhysicalMediaDiModule {
 
     @Provides
     fun providePhysicalGameDao(db: PhysicalMediaDatabase): PhysicalGameDao = db.physicalGameDao()
+
+    @Provides
+    fun providePhysicalMovieCollectionItemDao(db: PhysicalMediaDatabase): PhysicalMovieCollectionItemDao = db.physicalMovieCollectionItemDao()
+
+    @Provides
+    fun providePhysicalGameCollectionItemDao(db: PhysicalMediaDatabase): PhysicalGameCollectionItemDao = db.physicalGameCollectionItemDao()
 
     @Provides
     fun providePhysicalTvSeriesDao(db: PhysicalMediaDatabase): PhysicalTvSeriesDao = db.physicalTvSeriesDao()

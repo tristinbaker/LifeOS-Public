@@ -7,6 +7,7 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Casino
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
@@ -27,10 +28,12 @@ fun GamesCollectionScreen(
     games: List<PhysicalGame>,
     onGameClick: (Long) -> Unit,
     onAddGame: () -> Unit,
+    onRandomGame: () -> Unit = {},
     listState: LazyListState = rememberLazyListState()
 ) {
     var sortMode by remember { mutableStateOf(GameSortMode.BY_SYSTEM) }
     var collapsedGroups by remember { mutableStateOf(emptySet<String>()) }
+    var expandedCollections by remember { mutableStateOf(emptySet<Long>()) }
     var searchQuery by remember { mutableStateOf("") }
 
     val sortedGroups: List<Pair<String, List<PhysicalGame>>> = remember(games, sortMode, searchQuery) {
@@ -40,7 +43,7 @@ fun GamesCollectionScreen(
         }
         when (sortMode) {
             GameSortMode.BY_SYSTEM -> filtered
-                .sortedBy { it.title.lowercase() }
+                .sortedBy { titleSortKey(it.title).lowercase() }
                 .groupBy { it.system.displayName() }
                 .entries.sortedBy { it.key }
                 .map { it.key to it.value }
@@ -55,8 +58,13 @@ fun GamesCollectionScreen(
 
     Scaffold(
         floatingActionButton = {
-            SmallFloatingActionButton(onClick = onAddGame) {
-                Icon(Icons.Default.Add, "Add Game")
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp), horizontalAlignment = Alignment.End) {
+                SmallFloatingActionButton(onClick = onRandomGame) {
+                    Icon(Icons.Default.Casino, "Pick Random Game")
+                }
+                SmallFloatingActionButton(onClick = onAddGame) {
+                    Icon(Icons.Default.Add, "Add Game")
+                }
             }
         }
     ) { padding ->
@@ -162,9 +170,39 @@ fun GamesCollectionScreen(
                                 coverLocalPath = game.coverLocalPath,
                                 coverUrl = game.coverUrl,
                                 title = game.title,
-                                metadata = game.system.displayName(),
+                                metadata = if (game.isCollection) "${game.system.displayName()} · Collection" else game.system.displayName(),
                                 onClick = { onGameClick(game.id) }
                             )
+                            if (game.isCollection && game.collectionItems.isNotEmpty()) {
+                                val itemsExpanded = game.id in expandedCollections
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable {
+                                            expandedCollections = if (itemsExpanded)
+                                                expandedCollections - game.id
+                                            else
+                                                expandedCollections + game.id
+                                        }
+                                        .padding(start = 80.dp, end = 16.dp, bottom = 4.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        "${game.collectionItems.size} titles  ${if (itemsExpanded) "▲" else "▼"}",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.outline
+                                    )
+                                }
+                                if (itemsExpanded) {
+                                    game.collectionItems.forEach { collectionItem ->
+                                        Text(
+                                            collectionItem.title,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            modifier = Modifier.padding(start = 96.dp, end = 16.dp, top = 2.dp, bottom = 2.dp)
+                                        )
+                                    }
+                                }
+                            }
                             HorizontalDivider(
                                 color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
                             )

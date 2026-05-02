@@ -13,6 +13,14 @@ import java.time.YearMonth
 import java.time.format.DateTimeFormatter
 import javax.inject.Inject
 
+data class MonthlyTrend(
+    val month: YearMonth,
+    val income: Double,
+    val expenses: Double
+) {
+    val net: Double get() = income - expenses
+}
+
 data class FinanceUiState(
     val netWorth: Double = 0.0,
     val totalAssets: Double = 0.0,
@@ -26,7 +34,8 @@ data class FinanceUiState(
     val categorySpending: List<CategorySpending> = emptyList(),
     val categories: List<CategoryEntity> = emptyList(),
     val budgets: List<BudgetEntity> = emptyList(),
-    val recurringTransactions: List<RecurringTransactionEntity> = emptyList()
+    val recurringTransactions: List<RecurringTransactionEntity> = emptyList(),
+    val monthlyTrends: List<MonthlyTrend> = emptyList()
 )
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -49,12 +58,14 @@ class FinanceViewModel @Inject constructor(
         combine(
             repository.getActiveRecurring(),
             repository.getNetWorthHistory()
-        ) { recurring, history -> Pair(recurring, history) }
-    ) { accountsWithBalances, (monthlyTxns, cats, budgets), (recurring, history) ->
+        ) { recurring, history -> Pair(recurring, history) },
+        repository.getAllTransactions()
+    ) { accountsWithBalances, (monthlyTxns, cats, budgets), (recurring, history), allTxns ->
         val assets = accountsWithBalances.filter { it.account.type.isAsset() }.sumOf { it.balance }
         val liabilities = accountsWithBalances.filter { !it.account.type.isAsset() }.sumOf { it.balance }
         val budgetMap = budgets.associateBy { it.categoryId }
-        val expensesByCat = monthlyTxns.filter { it.type == TransactionType.EXPENSE }
+        val expensesByCat = monthlyTxns
+            .filter { it.type == TransactionType.EXPENSE || it.type == TransactionType.TRANSFER }
             .groupBy { it.categoryId }.mapValues { (_, list) -> list.sumOf { it.amount } }
         val categorySpending = cats.filter { expensesByCat.containsKey(it.id) || budgetMap.containsKey(it.id) }
             .map { cat ->
@@ -78,7 +89,8 @@ class FinanceViewModel @Inject constructor(
             categorySpending = categorySpending,
             categories = cats,
             budgets = budgets,
-            recurringTransactions = recurring
+            recurringTransactions = recurring,
+            monthlyTrends = buildMonthlyTrends(allTxns)
         )
     }.stateIn(viewModelScope, SharingStarted.Eagerly, FinanceUiState())
 
@@ -288,5 +300,20 @@ class FinanceViewModel @Inject constructor(
         viewModelScope.launch {
             repository.setRecurringActive(id, isActive)
         }
+    }
+
+    private fun buildMonthlyTrends(txns: List<TransactionEntity>): List<MonthlyTrend> {
+        val now = YearMonth.now()
+        return (0..11).map { offset ->
+            val month = now.minusMonths(offset.toLong())
+            val monthTxns = txns.filter {
+                try { YearMonth.from(LocalDate.parse(it.date)) == month } catch (e: Exception) { false }
+            }
+            MonthlyTrend(
+                month = month,
+                income = monthTxns.filter { it.type == TransactionType.INCOME }.sumOf { it.amount },
+                expenses = monthTxns.filter { it.type == TransactionType.EXPENSE || it.type == TransactionType.TRANSFER }.sumOf { it.amount }
+            )
+        }.reversed()
     }
 }

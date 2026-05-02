@@ -5,11 +5,14 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.snapshots.SnapshotStateList
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.layout.ContentScale
@@ -28,16 +31,20 @@ fun AddEditGameScreen(
     existingSystem: GameSystem = GameSystem.SWITCH,
     existingCoverUrl: String = "",
     existingCoverLocalPath: String = "",
+    existingIsCollection: Boolean = false,
+    existingCollectionItems: List<String> = emptyList(),
     selectedCoverLocalPath: String? = null,
     onSearchCover: (query: String) -> Unit,
     onNavigateBack: () -> Unit,
     onNavigateBackWithDelete: (() -> Unit)? = null,
-    onSave: (title: String, system: GameSystem, coverUrl: String?, coverLocalPath: String?) -> Unit
+    onSave: (title: String, system: GameSystem, coverUrl: String?, coverLocalPath: String?, isCollection: Boolean, collectionItems: List<String>) -> Unit
 ) {
     var title by remember { mutableStateOf(existingTitle) }
     var system by remember { mutableStateOf(existingSystem) }
     var coverUrl by remember { mutableStateOf(existingCoverUrl) }
     var coverLocalPath by remember { mutableStateOf(existingCoverLocalPath) }
+    var isCollection by remember { mutableStateOf(existingIsCollection) }
+    val collectionTitles: SnapshotStateList<String> = remember { mutableStateListOf(*existingCollectionItems.toTypedArray()) }
     var systemMenuExpanded by remember { mutableStateOf(false) }
 
     LaunchedEffect(selectedCoverLocalPath) {
@@ -126,7 +133,49 @@ fun AddEditGameScreen(
             }
         }
 
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(8.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text("Collection?", style = MaterialTheme.typography.bodyLarge)
+            Checkbox(checked = isCollection, onCheckedChange = { isCollection = it })
+        }
+
+        if (isCollection) {
+            Text("Collection Contents", style = MaterialTheme.typography.labelMedium, modifier = Modifier.padding(top = 4.dp, bottom = 4.dp))
+            collectionTitles.forEachIndexed { index, titleText ->
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    OutlinedTextField(
+                        value = titleText,
+                        onValueChange = { collectionTitles[index] = it },
+                        label = { Text("Title ${index + 1}") },
+                        modifier = Modifier.weight(1f),
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words)
+                    )
+                    IconButton(onClick = { collectionTitles.removeAt(index) }) {
+                        Icon(Icons.Default.Delete, "Remove", tint = MaterialTheme.colorScheme.error)
+                    }
+                }
+                Spacer(Modifier.height(4.dp))
+            }
+            TextButton(
+                onClick = { collectionTitles.add("") },
+                modifier = Modifier.align(Alignment.Start)
+            ) {
+                Icon(Icons.Default.Add, null, modifier = Modifier.size(16.dp))
+                Spacer(Modifier.width(4.dp))
+                Text("Add Title")
+            }
+        }
+
+        Spacer(Modifier.height(4.dp))
 
         if (coverModel != null) {
             AsyncImage(
@@ -150,7 +199,7 @@ fun AddEditGameScreen(
         Spacer(Modifier.height(16.dp))
 
         Button(
-            onClick = { onSave(title, system, coverUrl.ifBlank { null }, coverLocalPath.ifBlank { null }) },
+            onClick = { onSave(title, system, coverUrl.ifBlank { null }, coverLocalPath.ifBlank { null }, isCollection, collectionTitles.toList()) },
             enabled = title.isNotBlank(),
             modifier = Modifier.fillMaxWidth()
         ) {

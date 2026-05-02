@@ -41,6 +41,7 @@ fun FinanceDashboardScreen(
     onAccountClick: (Long) -> Unit,
     onSettingsClick: () -> Unit,
     onRecurringClick: () -> Unit,
+    onTrendsClick: () -> Unit,
     onPreviousMonth: () -> Unit,
     onNextMonth: () -> Unit,
     onTodayClick: () -> Unit,
@@ -50,7 +51,6 @@ fun FinanceDashboardScreen(
     val monthLabel = uiState.selectedMonth.format(DateTimeFormatter.ofPattern("MMMM yyyy"))
     val assetAccounts = uiState.accounts.filter { it.account.type.isAsset() }
     val liabilityAccounts = uiState.accounts.filter { !it.account.type.isAsset() }
-    val recentTransactions = uiState.monthlyTransactions.take(5)
 
     Scaffold(
         modifier = modifier,
@@ -58,6 +58,9 @@ fun FinanceDashboardScreen(
             TopAppBar(
                 title = { Text("Finance") },
                 actions = {
+                    IconButton(onClick = onTrendsClick) {
+                        Icon(Icons.AutoMirrored.Filled.TrendingUp, contentDescription = "Trends")
+                    }
                     IconButton(onClick = onRecurringClick) {
                         Icon(Icons.Default.Repeat, contentDescription = "Recurring")
                     }
@@ -136,28 +139,8 @@ fun FinanceDashboardScreen(
 
             // Monthly summary
             item {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        IconButton(onClick = onPreviousMonth, modifier = Modifier.size(32.dp)) {
-                            Icon(Icons.Default.ChevronLeft, contentDescription = "Previous month", modifier = Modifier.size(20.dp))
-                        }
-                        Text(monthLabel, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                        IconButton(onClick = onNextMonth, modifier = Modifier.size(32.dp)) {
-                            Icon(Icons.Default.ChevronRight, contentDescription = "Next month", modifier = Modifier.size(20.dp))
-                        }
-                    }
-                    if (!isCurrentMonth) {
-                        TextButton(onClick = onTodayClick) { Text("Today") }
-                    }
-                }
-            }
-
-            item {
                 MonthlySummaryCard(
+                    monthLabel = monthLabel,
                     totalIncome = uiState.totalIncome,
                     totalExpenses = uiState.totalExpenses,
                     netBalance = uiState.totalIncome - uiState.totalExpenses
@@ -176,12 +159,38 @@ fun FinanceDashboardScreen(
                 }
             }
 
-            // Recent transactions
+            // Transactions with month navigation
             item {
-                Text("Recent Transactions", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        "Transactions",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.weight(1f)
+                    )
+                    IconButton(onClick = onPreviousMonth, modifier = Modifier.size(36.dp)) {
+                        Icon(Icons.Default.ChevronLeft, contentDescription = "Previous month")
+                    }
+                    Text(
+                        monthLabel,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.outline
+                    )
+                    IconButton(onClick = onNextMonth, modifier = Modifier.size(36.dp)) {
+                        Icon(Icons.Default.ChevronRight, contentDescription = "Next month")
+                    }
+                    if (!isCurrentMonth) {
+                        TextButton(onClick = onTodayClick, contentPadding = PaddingValues(horizontal = 8.dp)) {
+                            Text("Today", style = MaterialTheme.typography.labelMedium)
+                        }
+                    }
+                }
             }
 
-            if (recentTransactions.isEmpty()) {
+            if (uiState.monthlyTransactions.isEmpty()) {
                 item {
                     Box(modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp), contentAlignment = Alignment.Center) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -192,7 +201,7 @@ fun FinanceDashboardScreen(
                     }
                 }
             } else {
-                items(recentTransactions, key = { it.id }) { tx ->
+                items(uiState.monthlyTransactions, key = { it.id }) { tx ->
                     val account = uiState.accounts.find { it.account.id == tx.accountId }?.account
                     val category = uiState.categories.find { it.id == tx.categoryId }
                     TransactionCard(transaction = tx, category = category, account = account, onClick = { onEditTransaction(tx.id) })
@@ -285,22 +294,26 @@ private fun AccountRow(
 
 @Composable
 private fun MonthlySummaryCard(
+    monthLabel: String,
     totalIncome: Double,
     totalExpenses: Double,
     netBalance: Double,
     modifier: Modifier = Modifier
 ) {
     Card(modifier = modifier.fillMaxWidth()) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(16.dp),
-            horizontalArrangement = Arrangement.SpaceEvenly
-        ) {
-            StatCell("Income", totalIncome, Color(0xFF4CAF50), Icons.AutoMirrored.Filled.TrendingUp)
-            VerticalDivider(modifier = Modifier.height(56.dp))
-            StatCell("Expenses", totalExpenses, MaterialTheme.colorScheme.error, Icons.AutoMirrored.Filled.TrendingDown)
-            VerticalDivider(modifier = Modifier.height(56.dp))
-            StatCell("Net", netBalance, if (netBalance >= 0) Color(0xFF4CAF50) else MaterialTheme.colorScheme.error,
-                if (netBalance >= 0) Icons.AutoMirrored.Filled.TrendingUp else Icons.AutoMirrored.Filled.TrendingDown)
+        Column(modifier = Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text(monthLabel, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly
+            ) {
+                StatCell("Income", totalIncome, Color(0xFF4CAF50), Icons.AutoMirrored.Filled.TrendingUp)
+                VerticalDivider(modifier = Modifier.height(56.dp))
+                StatCell("Expenses", totalExpenses, MaterialTheme.colorScheme.error, Icons.AutoMirrored.Filled.TrendingDown)
+                VerticalDivider(modifier = Modifier.height(56.dp))
+                StatCell("Net", netBalance, if (netBalance >= 0) Color(0xFF4CAF50) else MaterialTheme.colorScheme.error,
+                    if (netBalance >= 0) Icons.AutoMirrored.Filled.TrendingUp else Icons.AutoMirrored.Filled.TrendingDown)
+            }
         }
     }
 }
@@ -376,7 +389,22 @@ internal fun TransactionCard(
         ) {
             Box(modifier = Modifier.size(10.dp).clip(CircleShape).background(categoryColor))
             Column(modifier = Modifier.weight(1f)) {
-                Text(category?.name ?: "Unknown", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
+                Text(
+                    transaction.note.ifBlank { category?.name ?: "Unknown" },
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                if (transaction.note.isNotBlank()) {
+                    Text(
+                        category?.name ?: "Unknown",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.outline,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
                 Text(
                     account?.name ?: "",
                     style = MaterialTheme.typography.labelSmall,
@@ -384,9 +412,6 @@ internal fun TransactionCard(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
-                if (transaction.note.isNotBlank()) {
-                    Text(transaction.note, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                }
             }
             Column(horizontalAlignment = Alignment.End) {
                 Text("$amountPrefix${formatCurrency(transaction.amount)}", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, color = amountColor)

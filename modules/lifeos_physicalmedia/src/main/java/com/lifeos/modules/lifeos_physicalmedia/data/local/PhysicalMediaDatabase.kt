@@ -51,15 +51,43 @@ val PM_MIGRATION_4_5 = object : androidx.room.migration.Migration(4, 5) {
     }
 }
 
+val PM_MIGRATION_5_6 = object : androidx.room.migration.Migration(5, 6) {
+    override fun migrate(database: androidx.sqlite.db.SupportSQLiteDatabase) {
+        database.execSQL("ALTER TABLE physical_movies ADD COLUMN isCollection INTEGER NOT NULL DEFAULT 0")
+        database.execSQL("ALTER TABLE physical_games ADD COLUMN isCollection INTEGER NOT NULL DEFAULT 0")
+        database.execSQL("""CREATE TABLE IF NOT EXISTS physical_movie_collection_items (
+            id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+            movieId INTEGER NOT NULL,
+            title TEXT NOT NULL,
+            FOREIGN KEY(movieId) REFERENCES physical_movies(id) ON DELETE CASCADE)""")
+        database.execSQL("CREATE INDEX index_movie_col_movieId ON physical_movie_collection_items(movieId)")
+        database.execSQL("""CREATE TABLE IF NOT EXISTS physical_game_collection_items (
+            id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+            gameId INTEGER NOT NULL,
+            title TEXT NOT NULL,
+            FOREIGN KEY(gameId) REFERENCES physical_games(id) ON DELETE CASCADE)""")
+        database.execSQL("CREATE INDEX index_game_col_gameId ON physical_game_collection_items(gameId)")
+    }
+}
+
 @Database(
-    entities = [PhysicalBookEntity::class, PhysicalMovieEntity::class, PhysicalGameEntity::class, PhysicalTvSeriesEntity::class],
-    version = 5,
+    entities = [
+        PhysicalBookEntity::class,
+        PhysicalMovieEntity::class,
+        PhysicalMovieCollectionItemEntity::class,
+        PhysicalGameEntity::class,
+        PhysicalGameCollectionItemEntity::class,
+        PhysicalTvSeriesEntity::class
+    ],
+    version = 6,
     exportSchema = true
 )
 @TypeConverters(PhysicalMediaConverters::class)
 abstract class PhysicalMediaDatabase : RoomDatabase() {
     abstract fun physicalBookDao(): PhysicalBookDao
     abstract fun physicalMovieDao(): PhysicalMovieDao
+    abstract fun physicalMovieCollectionItemDao(): PhysicalMovieCollectionItemDao
     abstract fun physicalGameDao(): PhysicalGameDao
+    abstract fun physicalGameCollectionItemDao(): PhysicalGameCollectionItemDao
     abstract fun physicalTvSeriesDao(): PhysicalTvSeriesDao
 }

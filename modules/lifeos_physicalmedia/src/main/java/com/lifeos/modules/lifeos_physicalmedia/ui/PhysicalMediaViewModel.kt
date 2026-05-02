@@ -2,6 +2,7 @@ package com.lifeos.modules.lifeos_physicalmedia.ui
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.lifeos.modules.lifeos_medialogger.data.repository.MediaLoggerRepository
 import com.lifeos.modules.lifeos_physicalmedia.data.local.*
 import com.lifeos.modules.lifeos_physicalmedia.data.preferences.PhysicalMediaPreferences
 import com.lifeos.modules.lifeos_physicalmedia.data.repository.PhysicalMediaRepository
@@ -29,7 +30,13 @@ data class PhysicalMediaState(
     val gamePrices: Map<Long, Double?> = emptyMap(),
     val isFetchingPrices: Boolean = false,
     val pricesFetchCount: Int = 0,
-    val drillDown: PhysicalMediaDrillDown? = null
+    val drillDown: PhysicalMediaDrillDown? = null,
+    val randomBook: PhysicalBook? = null,
+    val randomMovie: PhysicalMovie? = null,
+    val randomMovieItemTitle: String? = null,
+    val randomGame: PhysicalGame? = null,
+    val randomGameItemTitle: String? = null,
+    val randomExcludedCount: Int = 0
 ) {
     val distinctBookAuthors: List<String>
         get() = books.map { it.author }.filter { it.isNotBlank() }.distinct().sorted()
@@ -55,7 +62,8 @@ class PhysicalMediaViewModel @Inject constructor(
     private val preferences: PhysicalMediaPreferences,
     val imageCacheService: ImageCacheService,
     val imageSearchService: ImageSearchService,
-    private val priceChartingService: PriceChartingService
+    private val priceChartingService: PriceChartingService,
+    private val mediaLoggerRepository: MediaLoggerRepository
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(PhysicalMediaState())
@@ -66,6 +74,10 @@ class PhysicalMediaViewModel @Inject constructor(
     private var currentGames: List<PhysicalGame> = emptyList()
     private var currentTvSeries: List<PhysicalTvSeries> = emptyList()
 
+    private val _recentBookTitles = MutableStateFlow<Set<String>>(emptySet())
+    private val _recentMovieTitles = MutableStateFlow<Set<String>>(emptySet())
+    private val _recentGameTitles = MutableStateFlow<Set<String>>(emptySet())
+
     init {
         viewModelScope.launch {
             repository.getBooks().collect { entities ->
@@ -74,14 +86,20 @@ class PhysicalMediaViewModel @Inject constructor(
             }
         }
         viewModelScope.launch {
-            repository.getMovies().collect { entities ->
-                currentMovies = entities.map { it.toDomain() }
+            combine(repository.getMovies(), repository.getMovieCollectionItems()) { movies, items ->
+                val byMovie = items.groupBy { it.movieId }
+                movies.map { it.toDomain(byMovie[it.id] ?: emptyList()) }
+            }.collect { movies ->
+                currentMovies = movies
                 _state.update { it.copy(movies = currentMovies, stats = computeStats()) }
             }
         }
         viewModelScope.launch {
-            repository.getGames().collect { entities ->
-                currentGames = entities.map { it.toDomain() }
+            combine(repository.getGames(), repository.getGameCollectionItems()) { games, items ->
+                val byGame = items.groupBy { it.gameId }
+                games.map { it.toDomain(byGame[it.id] ?: emptyList()) }
+            }.collect { games ->
+                currentGames = games
                 _state.update { it.copy(games = currentGames, stats = computeStats()) }
             }
         }
@@ -101,6 +119,65 @@ class PhysicalMediaViewModel @Inject constructor(
                 _state.update { it.copy(lastMovieFormat = format) }
             }
         }
+        val oneYearMs = 365L * 24 * 60 * 60 * 1000
+        viewModelScope.launch {
+            mediaLoggerRepository.getBooks().collect { items ->
+                val cutoff = System.currentTimeMillis() - oneYearMs
+                _recentBookTitles.value = items.filter { (it.dateCompleted ?: 0L) >= cutoff }.map { it.title }.toSet()
+            }
+        }
+        viewModelScope.launch {
+            mediaLoggerRepository.getMovies().collect { items ->
+                val cutoff = System.currentTimeMillis() - oneYearMs
+                _recentMovieTitles.value = items.filter { (it.dateCompleted ?: 0L) >= cutoff }.map { it.title }.toSet()
+            }
+        }
+        viewModelScope.launch {
+            mediaLoggerRepository.getGames().collect { items ->
+                val cutoff = System.currentTimeMillis() - oneYearMs
+                _recentGameTitles.value = items.filter { (it.dateCompleted ?: 0L) >= cutoff }.map { it.title }.toSet()
+            }
+        }
+    }
+
+    fun pickRandomBook() {
+        val eligible = currentBooks.filter { it.title !in _recentBookTitles.value }
+        val pool = eligible.ifEmpty { currentBooks }
+        _state.update { it.copy(randomBook = pool.randomOrNull(), randomExcludedCount = currentBooks.size - pool.size) }
+    }
+
+    fun pickRandomMovie() {
+        data class Candidate(val movie: PhysicalMovie, val itemTitle: String?)
+        val candidates = currentMovies.flatMap { movie ->
+            if (movie.isCollection && movie.collectionItems.isNotEmpty())
+                movie.collectionItems.map { Candidate(movie, it.title) }
+            else listOf(Candidate(movie, null))
+        }
+        val eligible = candidates.filter { (it.itemTitle ?: it.movie.title) !in _recentMovieTitles.value }
+        val pool = eligible.ifEmpty { candidates }
+        val pick = pool.randomOrNull()
+        _state.update { it.copy(
+            randomMovie = pick?.movie,
+            randomMovieItemTitle = pick?.itemTitle,
+            randomExcludedCount = candidates.size - pool.size
+        ) }
+    }
+
+    fun pickRandomGame() {
+        data class Candidate(val game: PhysicalGame, val itemTitle: String?)
+        val candidates = currentGames.flatMap { game ->
+            if (game.isCollection && game.collectionItems.isNotEmpty())
+                game.collectionItems.map { Candidate(game, it.title) }
+            else listOf(Candidate(game, null))
+        }
+        val eligible = candidates.filter { (it.itemTitle ?: it.game.title) !in _recentGameTitles.value }
+        val pool = eligible.ifEmpty { candidates }
+        val pick = pool.randomOrNull()
+        _state.update { it.copy(
+            randomGame = pick?.game,
+            randomGameItemTitle = pick?.itemTitle,
+            randomExcludedCount = candidates.size - pool.size
+        ) }
     }
 
     fun discardPendingCover(localPath: String?) {
@@ -163,9 +240,9 @@ class PhysicalMediaViewModel @Inject constructor(
         }
     }
 
-    fun addMovie(title: String, format: MovieFormat, limitedEdition: Boolean, steelbook: Boolean, slipcover: Boolean, boutiqueLabel: String?, catalogNumber: String?, coverUrl: String?, coverLocalPath: String?) {
+    fun addMovie(title: String, format: MovieFormat, limitedEdition: Boolean, steelbook: Boolean, slipcover: Boolean, boutiqueLabel: String?, catalogNumber: String?, coverUrl: String?, coverLocalPath: String?, isCollection: Boolean = false, collectionItems: List<String> = emptyList()) {
         viewModelScope.launch {
-            repository.insertMovie(
+            val id = repository.insertMovie(
                 PhysicalMovieEntity(
                     title = title,
                     format = format,
@@ -175,14 +252,18 @@ class PhysicalMediaViewModel @Inject constructor(
                     boutiqueLabel = boutiqueLabel,
                     catalogNumber = catalogNumber,
                     coverUrl = coverUrl,
-                    coverLocalPath = coverLocalPath
+                    coverLocalPath = coverLocalPath,
+                    isCollection = isCollection
                 )
             )
+            if (isCollection && collectionItems.isNotEmpty()) {
+                repository.replaceMovieCollectionItems(id, collectionItems.filter { it.isNotBlank() })
+            }
             preferences.setLastMovieFormat(format)
         }
     }
 
-    fun updateMovie(id: Long, title: String, format: MovieFormat, limitedEdition: Boolean, steelbook: Boolean, slipcover: Boolean, boutiqueLabel: String?, catalogNumber: String?, coverUrl: String?, coverLocalPath: String?) {
+    fun updateMovie(id: Long, title: String, format: MovieFormat, limitedEdition: Boolean, steelbook: Boolean, slipcover: Boolean, boutiqueLabel: String?, catalogNumber: String?, coverUrl: String?, coverLocalPath: String?, isCollection: Boolean = false, collectionItems: List<String> = emptyList()) {
         viewModelScope.launch {
             val existing = repository.getMovieById(id) ?: return@launch
             if (coverLocalPath != existing.coverLocalPath) {
@@ -198,9 +279,11 @@ class PhysicalMediaViewModel @Inject constructor(
                     boutiqueLabel = boutiqueLabel,
                     catalogNumber = catalogNumber,
                     coverUrl = if (coverLocalPath != existing.coverLocalPath) coverUrl else existing.coverUrl,
-                    coverLocalPath = coverLocalPath
+                    coverLocalPath = coverLocalPath,
+                    isCollection = isCollection
                 )
             )
+            repository.replaceMovieCollectionItems(id, if (isCollection) collectionItems.filter { it.isNotBlank() } else emptyList())
         }
     }
 
@@ -212,21 +295,25 @@ class PhysicalMediaViewModel @Inject constructor(
         }
     }
 
-    fun addGame(title: String, system: GameSystem, coverUrl: String?, coverLocalPath: String?) {
+    fun addGame(title: String, system: GameSystem, coverUrl: String?, coverLocalPath: String?, isCollection: Boolean = false, collectionItems: List<String> = emptyList()) {
         viewModelScope.launch {
-            repository.insertGame(
+            val id = repository.insertGame(
                 PhysicalGameEntity(
                     title = title,
                     system = system,
                     coverUrl = coverUrl,
-                    coverLocalPath = coverLocalPath
+                    coverLocalPath = coverLocalPath,
+                    isCollection = isCollection
                 )
             )
+            if (isCollection && collectionItems.isNotEmpty()) {
+                repository.replaceGameCollectionItems(id, collectionItems.filter { it.isNotBlank() })
+            }
             preferences.setLastGameSystem(system)
         }
     }
 
-    fun updateGame(id: Long, title: String, system: GameSystem, coverUrl: String?, coverLocalPath: String?) {
+    fun updateGame(id: Long, title: String, system: GameSystem, coverUrl: String?, coverLocalPath: String?, isCollection: Boolean = false, collectionItems: List<String> = emptyList()) {
         viewModelScope.launch {
             val existing = repository.getGameById(id) ?: return@launch
             if (coverLocalPath != existing.coverLocalPath) {
@@ -237,9 +324,11 @@ class PhysicalMediaViewModel @Inject constructor(
                     title = title,
                     system = system,
                     coverUrl = if (coverLocalPath != existing.coverLocalPath) coverUrl else existing.coverUrl,
-                    coverLocalPath = coverLocalPath
+                    coverLocalPath = coverLocalPath,
+                    isCollection = isCollection
                 )
             )
+            repository.replaceGameCollectionItems(id, if (isCollection) collectionItems.filter { it.isNotBlank() } else emptyList())
         }
     }
 
@@ -324,9 +413,12 @@ class PhysicalMediaViewModel @Inject constructor(
                 currentGames.count { it.createdAt.isThisYear() } +
                 currentTvSeries.count { it.createdAt.isThisYear() }
 
+        fun itemCount(isCollection: Boolean, itemCount: Int) =
+            if (isCollection && itemCount > 0) itemCount else 1
+
         val gamesBySystem = currentGames
             .groupBy { it.system }
-            .mapValues { it.value.size }
+            .mapValues { (_, games) -> games.sumOf { itemCount(it.isCollection, it.collectionItems.size) } }
             .filter { it.value > 0 }
 
         val top3Systems = gamesBySystem.entries
@@ -336,11 +428,11 @@ class PhysicalMediaViewModel @Inject constructor(
 
         return PhysicalMediaStats(
             totalBooks = currentBooks.size,
-            totalMovies = currentMovies.size,
-            totalGames = currentGames.size,
+            totalMovies = currentMovies.sumOf { if (it.isCollection && it.collectionItems.isNotEmpty()) it.collectionItems.size else 1 },
+            totalGames = currentGames.sumOf { if (it.isCollection && it.collectionItems.isNotEmpty()) it.collectionItems.size else 1 },
             totalTvSeries = currentTvSeries.size,
             booksByFormat = currentBooks.groupBy { it.format }.mapValues { it.value.size },
-            moviesByFormat = currentMovies.groupBy { it.format }.mapValues { it.value.size },
+            moviesByFormat = currentMovies.groupBy { it.format }.mapValues { (_, movies) -> movies.sumOf { itemCount(it.isCollection, it.collectionItems.size) } },
             tvSeriesByFormat = currentTvSeries.groupBy { it.format }.mapValues { it.value.size },
             steelbookCount = currentMovies.count { it.steelbook },
             limitedEditionCount = currentMovies.count { it.limitedEdition },
@@ -356,7 +448,10 @@ class PhysicalMediaViewModel @Inject constructor(
             gamesBySystem = gamesBySystem,
             top3Systems = top3Systems,
             addedThisYear = addedThisYear,
-            totalItems = currentBooks.size + currentMovies.size + currentGames.size + currentTvSeries.size
+            totalItems = currentBooks.size +
+                currentMovies.sumOf { if (it.isCollection && it.collectionItems.isNotEmpty()) it.collectionItems.size else 1 } +
+                currentGames.sumOf { if (it.isCollection && it.collectionItems.isNotEmpty()) it.collectionItems.size else 1 } +
+                currentTvSeries.size
         )
     }
 
@@ -366,16 +461,22 @@ class PhysicalMediaViewModel @Inject constructor(
         seriesName = seriesName, seriesNumber = seriesNumber, createdAt = createdAt
     )
 
-    private fun PhysicalMovieEntity.toDomain() = PhysicalMovie(
+    private fun PhysicalMovieEntity.toDomain(items: List<PhysicalMovieCollectionItemEntity> = emptyList()) = PhysicalMovie(
         id = id, title = title, format = format,
         limitedEdition = limitedEdition, steelbook = steelbook, slipcover = slipcover,
         boutiqueLabel = boutiqueLabel, catalogNumber = catalogNumber,
-        coverUrl = coverUrl, coverLocalPath = coverLocalPath, createdAt = createdAt
+        coverUrl = coverUrl, coverLocalPath = coverLocalPath,
+        isCollection = isCollection,
+        collectionItems = items.map { PhysicalMovieCollectionItem(it.id, it.movieId, it.title) },
+        createdAt = createdAt
     )
 
-    private fun PhysicalGameEntity.toDomain() = PhysicalGame(
+    private fun PhysicalGameEntity.toDomain(items: List<PhysicalGameCollectionItemEntity> = emptyList()) = PhysicalGame(
         id = id, title = title, system = system,
-        coverUrl = coverUrl, coverLocalPath = coverLocalPath, createdAt = createdAt
+        coverUrl = coverUrl, coverLocalPath = coverLocalPath,
+        isCollection = isCollection,
+        collectionItems = items.map { PhysicalGameCollectionItem(it.id, it.gameId, it.title) },
+        createdAt = createdAt
     )
 
     private fun PhysicalTvSeriesEntity.toDomain() = PhysicalTvSeries(

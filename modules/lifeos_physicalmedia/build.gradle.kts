@@ -87,6 +87,7 @@ dependencies {
     implementation("org.jsoup:jsoup:1.17.2")
 
     implementation(project(":modules:lifeos_core"))
+    implementation(project(":modules:lifeos_medialogger"))
 
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-test-manifest")

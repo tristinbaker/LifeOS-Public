@@ -29,6 +29,7 @@ import com.lifeos.modules.lifeos_physicalmedia.ui.games.AddEditGameScreen
 import com.lifeos.modules.lifeos_physicalmedia.ui.games.GamesCollectionScreen
 import com.lifeos.modules.lifeos_physicalmedia.ui.movies.AddEditMovieScreen
 import com.lifeos.modules.lifeos_physicalmedia.ui.movies.MoviesCollectionScreen
+import com.lifeos.modules.lifeos_physicalmedia.ui.random.RandomPickerScreen
 import com.lifeos.modules.lifeos_physicalmedia.ui.stats.PhysicalStatsDetailScreen
 import com.lifeos.modules.lifeos_physicalmedia.ui.stats.PhysicalStatsScreen
 import com.lifeos.modules.lifeos_physicalmedia.ui.tvseries.AddEditTvSeriesScreen
@@ -59,6 +60,7 @@ fun PhysicalMediaContent(
 ) {
     var currentScreen by remember { mutableStateOf("main") }
     var editItemId by remember { mutableStateOf<Long?>(null) }
+    var randomType by remember { mutableStateOf("movie") }
     var pendingCoverLocalPath by remember { mutableStateOf<String?>(null) }
     var imageSearchQuery by remember { mutableStateOf("") }
     var screenBeforeSearch by remember { mutableStateOf("main") }
@@ -149,18 +151,21 @@ fun PhysicalMediaContent(
                             books = state.books,
                             onBookClick = { id -> pendingCoverLocalPath = null; editItemId = id; currentScreen = "edit_book" },
                             onAddBook = { pendingCoverLocalPath = null; currentScreen = "add_book" },
+                            onRandomBook = { viewModel.pickRandomBook(); randomType = "book"; currentScreen = "random" },
                             listState = booksListState
                         )
                         PhysicalMediaTab.MOVIES -> MoviesCollectionScreen(
                             movies = state.movies,
                             onMovieClick = { id -> pendingCoverLocalPath = null; editItemId = id; currentScreen = "edit_movie" },
                             onAddMovie = { pendingCoverLocalPath = null; currentScreen = "add_movie" },
+                            onRandomMovie = { viewModel.pickRandomMovie(); randomType = "movie"; currentScreen = "random" },
                             listState = moviesListState
                         )
                         PhysicalMediaTab.GAMES -> GamesCollectionScreen(
                             games = state.games,
                             onGameClick = { id -> pendingCoverLocalPath = null; editItemId = id; currentScreen = "edit_game" },
                             onAddGame = { pendingCoverLocalPath = null; currentScreen = "add_game" },
+                            onRandomGame = { viewModel.pickRandomGame(); randomType = "game"; currentScreen = "random" },
                             listState = gamesListState
                         )
                         PhysicalMediaTab.TV_SERIES -> TvSeriesCollectionScreen(
@@ -230,8 +235,8 @@ fun PhysicalMediaContent(
                 selectedCoverLocalPath = pendingCoverLocalPath,
                 onSearchCover = { query -> goToImageSearch(query, "add_movie") },
                 onNavigateBack = { goToMain() },
-                onSave = { title, format, limited, steelbook, slipcover, boutiqueLabel, catalogNumber, coverUrl, coverLocalPath ->
-                    viewModel.addMovie(title, format, limited, steelbook, slipcover, boutiqueLabel, catalogNumber, coverUrl, coverLocalPath)
+                onSave = { title, format, limited, steelbook, slipcover, boutiqueLabel, catalogNumber, coverUrl, coverLocalPath, isCollection, collectionItems ->
+                    viewModel.addMovie(title, format, limited, steelbook, slipcover, boutiqueLabel, catalogNumber, coverUrl, coverLocalPath, isCollection, collectionItems)
                     goToMainAfterSave()
                 }
             )
@@ -249,6 +254,8 @@ fun PhysicalMediaContent(
                     existingCatalogNumber = movie?.catalogNumber ?: "",
                     existingCoverUrl = movie?.coverUrl ?: "",
                     existingCoverLocalPath = movie?.coverLocalPath ?: "",
+                    existingIsCollection = movie?.isCollection ?: false,
+                    existingCollectionItems = movie?.collectionItems?.map { it.title } ?: emptyList(),
                     knownBoutiqueLabels = state.distinctMovieBoutiqueLabels,
                     selectedCoverLocalPath = pendingCoverLocalPath,
                     onSearchCover = { query -> goToImageSearch(query, "edit_movie") },
@@ -257,8 +264,8 @@ fun PhysicalMediaContent(
                         editItemId?.let { viewModel.deleteMovie(it) }
                         goToMain()
                     },
-                    onSave = { title, format, limited, steelbook, slipcover, boutiqueLabel, catalogNumber, coverUrl, coverLocalPath ->
-                        editItemId?.let { viewModel.updateMovie(it, title, format, limited, steelbook, slipcover, boutiqueLabel, catalogNumber, coverUrl, coverLocalPath) }
+                    onSave = { title, format, limited, steelbook, slipcover, boutiqueLabel, catalogNumber, coverUrl, coverLocalPath, isCollection, collectionItems ->
+                        editItemId?.let { viewModel.updateMovie(it, title, format, limited, steelbook, slipcover, boutiqueLabel, catalogNumber, coverUrl, coverLocalPath, isCollection, collectionItems) }
                         goToMainAfterSave()
                     }
                 )
@@ -269,8 +276,8 @@ fun PhysicalMediaContent(
                 selectedCoverLocalPath = pendingCoverLocalPath,
                 onSearchCover = { query -> goToImageSearch(query, "add_game") },
                 onNavigateBack = { goToMain() },
-                onSave = { title, system, coverUrl, coverLocalPath ->
-                    viewModel.addGame(title, system, coverUrl, coverLocalPath)
+                onSave = { title, system, coverUrl, coverLocalPath, isCollection, collectionItems ->
+                    viewModel.addGame(title, system, coverUrl, coverLocalPath, isCollection, collectionItems)
                     goToMainAfterSave()
                 }
             )
@@ -283,6 +290,8 @@ fun PhysicalMediaContent(
                     existingSystem = game?.system ?: GameSystem.SWITCH,
                     existingCoverUrl = game?.coverUrl ?: "",
                     existingCoverLocalPath = game?.coverLocalPath ?: "",
+                    existingIsCollection = game?.isCollection ?: false,
+                    existingCollectionItems = game?.collectionItems?.map { it.title } ?: emptyList(),
                     selectedCoverLocalPath = pendingCoverLocalPath,
                     onSearchCover = { query -> goToImageSearch(query, "edit_game") },
                     onNavigateBack = { goToMain() },
@@ -290,8 +299,8 @@ fun PhysicalMediaContent(
                         editItemId?.let { viewModel.deleteGame(it) }
                         goToMain()
                     },
-                    onSave = { title, system, coverUrl, coverLocalPath ->
-                        editItemId?.let { viewModel.updateGame(it, title, system, coverUrl, coverLocalPath) }
+                    onSave = { title, system, coverUrl, coverLocalPath, isCollection, collectionItems ->
+                        editItemId?.let { viewModel.updateGame(it, title, system, coverUrl, coverLocalPath, isCollection, collectionItems) }
                         goToMainAfterSave()
                     }
                 )
@@ -327,6 +336,19 @@ fun PhysicalMediaContent(
                     currentScreen = "main"
                 }
             }
+
+            "random" -> RandomPickerScreen(
+                type = randomType,
+                state = state,
+                onPickAnother = {
+                    when (randomType) {
+                        "book"  -> viewModel.pickRandomBook()
+                        "movie" -> viewModel.pickRandomMovie()
+                        "game"  -> viewModel.pickRandomGame()
+                    }
+                },
+                onDone = { currentScreen = "main" }
+            )
 
             "edit_tv" -> {
                 val show = editItemId?.let { viewModel.getTvSeriesById(it) }

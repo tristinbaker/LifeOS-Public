@@ -7,6 +7,7 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Casino
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
@@ -27,6 +28,7 @@ fun BooksCollectionScreen(
     books: List<PhysicalBook>,
     onBookClick: (Long) -> Unit,
     onAddBook: () -> Unit,
+    onRandomBook: () -> Unit = {},
     listState: LazyListState = rememberLazyListState()
 ) {
     var sortMode by remember { mutableStateOf(BookSortMode.BY_AUTHOR) }
@@ -79,8 +81,13 @@ fun BooksCollectionScreen(
 
     Scaffold(
         floatingActionButton = {
-            SmallFloatingActionButton(onClick = onAddBook) {
-                Icon(Icons.Default.Add, "Add Book")
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp), horizontalAlignment = Alignment.End) {
+                SmallFloatingActionButton(onClick = onRandomBook) {
+                    Icon(Icons.Default.Casino, "Pick Random Book")
+                }
+                SmallFloatingActionButton(onClick = onAddBook) {
+                    Icon(Icons.Default.Add, "Add Book")
+                }
             }
         }
     ) { padding ->

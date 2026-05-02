@@ -16,6 +16,9 @@ data class PhysicalBook(
     val createdAt: Long = System.currentTimeMillis()
 )
 
+data class PhysicalMovieCollectionItem(val id: Long = 0, val movieId: Long, val title: String)
+data class PhysicalGameCollectionItem(val id: Long = 0, val gameId: Long, val title: String)
+
 data class PhysicalMovie(
     val id: Long = 0,
     val title: String,
@@ -27,6 +30,8 @@ data class PhysicalMovie(
     val catalogNumber: String? = null,
     val coverUrl: String? = null,
     val coverLocalPath: String? = null,
+    val isCollection: Boolean = false,
+    val collectionItems: List<PhysicalMovieCollectionItem> = emptyList(),
     val createdAt: Long = System.currentTimeMillis()
 )
 
@@ -36,6 +41,8 @@ data class PhysicalGame(
     val system: GameSystem,
     val coverUrl: String? = null,
     val coverLocalPath: String? = null,
+    val isCollection: Boolean = false,
+    val collectionItems: List<PhysicalGameCollectionItem> = emptyList(),
     val createdAt: Long = System.currentTimeMillis()
 )
 

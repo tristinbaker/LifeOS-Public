@@ -21,6 +21,19 @@ import com.lifeos.modules.lifeos_physicalmedia.domain.model.displayName
 
 private enum class TvSortMode { BY_TITLE, BY_SERIES }
 
+private fun titleSortKey(title: String): String {
+    val t = title.trim()
+    for (article in listOf("The ", "A ", "An ")) {
+        if (t.startsWith(article, ignoreCase = true)) return t.substring(article.length)
+    }
+    return t
+}
+
+private fun groupLetter(key: String): String {
+    val first = key.firstOrNull()?.uppercaseChar() ?: return "#"
+    return if (first.isLetter()) first.toString() else "#"
+}
+
 @Composable
 fun TvSeriesCollectionScreen(
     tvSeries: List<PhysicalTvSeries>,
@@ -42,15 +55,15 @@ fun TvSeriesCollectionScreen(
     val grouped: Map<String, List<PhysicalTvSeries>> = remember(filtered, sortMode) {
         when (sortMode) {
             TvSortMode.BY_TITLE -> filtered
-                .sortedBy { it.title.lowercase() }
-                .groupBy { it.title.firstOrNull()?.uppercaseChar()?.toString() ?: "#" }
+                .sortedBy { titleSortKey(it.title).lowercase() }
+                .groupBy { groupLetter(titleSortKey(it.title)) }
                 .entries.sortedWith(compareBy { if (it.key == "#") "zzz" else it.key.lowercase() })
                 .associate { it.key to it.value }
             TvSortMode.BY_SERIES -> {
                 val withSeries = filtered.filter { it.seriesName != null }
                     .sortedWith(compareBy({ it.seriesName!!.lowercase() }, { it.seriesNumber ?: Float.MAX_VALUE }))
                     .groupBy { it.seriesName!! }
-                val standalone = filtered.filter { it.seriesName == null }.sortedBy { it.title.lowercase() }
+                val standalone = filtered.filter { it.seriesName == null }.sortedBy { titleSortKey(it.title).lowercase() }
                 val result = withSeries.toMutableMap()
                 if (standalone.isNotEmpty()) result["Standalone"] = standalone
                 result

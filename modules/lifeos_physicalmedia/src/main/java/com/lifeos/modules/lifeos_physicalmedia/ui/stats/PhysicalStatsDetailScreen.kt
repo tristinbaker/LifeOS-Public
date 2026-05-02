@@ -25,43 +25,43 @@ fun PhysicalStatsDetailScreen(
     val filteredItems: List<DrillDownItem> = when (drillDown) {
         is PhysicalMediaDrillDown.BooksByFormat ->
             books.filter { it.format == drillDown.format }
-                .sortedBy { it.title }
+                .sortedBy { titleSortKey(it.title) }
                 .map { DrillDownItem(it.title, bookMetadata(it), it.coverLocalPath, it.coverUrl) }
         is PhysicalMediaDrillDown.MoviesByFormat ->
             movies.filter { it.format == drillDown.format }
-                .sortedBy { it.title }
+                .sortedBy { titleSortKey(it.title) }
                 .map { DrillDownItem(it.title, movieMetadata(it), it.coverLocalPath, it.coverUrl) }
         is PhysicalMediaDrillDown.MoviesSteelbooks ->
             movies.filter { it.steelbook }
-                .sortedBy { it.title }
+                .sortedBy { titleSortKey(it.title) }
                 .map { DrillDownItem(it.title, movieMetadata(it), it.coverLocalPath, it.coverUrl) }
         is PhysicalMediaDrillDown.MoviesLimitedEditions ->
             movies.filter { it.limitedEdition }
-                .sortedBy { it.title }
+                .sortedBy { titleSortKey(it.title) }
                 .map { DrillDownItem(it.title, movieMetadata(it), it.coverLocalPath, it.coverUrl) }
         is PhysicalMediaDrillDown.MoviesBoutique ->
             movies.filter { it.boutiqueLabel != null }
-                .sortedBy { it.title }
+                .sortedBy { titleSortKey(it.title) }
                 .map { DrillDownItem(it.title, movieMetadata(it), it.coverLocalPath, it.coverUrl) }
         is PhysicalMediaDrillDown.MoviesStandard ->
             movies.filter { it.boutiqueLabel == null }
-                .sortedBy { it.title }
+                .sortedBy { titleSortKey(it.title) }
                 .map { DrillDownItem(it.title, movieMetadata(it), it.coverLocalPath, it.coverUrl) }
         is PhysicalMediaDrillDown.MoviesByBoutiqueLabel ->
             movies.filter { it.boutiqueLabel == drillDown.label }
-                .sortedBy { it.title }
+                .sortedBy { titleSortKey(it.title) }
                 .map { DrillDownItem(it.title, movieMetadata(it), it.coverLocalPath, it.coverUrl) }
         is PhysicalMediaDrillDown.TvByFormat ->
             tvSeries.filter { it.format == drillDown.format }
-                .sortedBy { it.title }
+                .sortedBy { titleSortKey(it.title) }
                 .map { DrillDownItem(it.title, tvMetadata(it), it.coverLocalPath, it.coverUrl) }
         is PhysicalMediaDrillDown.TvCompleteSeries ->
             tvSeries.filter { it.completeSeries }
-                .sortedBy { it.title }
+                .sortedBy { titleSortKey(it.title) }
                 .map { DrillDownItem(it.title, tvMetadata(it), it.coverLocalPath, it.coverUrl) }
         is PhysicalMediaDrillDown.GamesBySystem ->
             games.filter { it.system == drillDown.system }
-                .sortedBy { it.title }
+                .sortedBy { titleSortKey(it.title) }
                 .map { DrillDownItem(it.title, it.system.displayName(), it.coverLocalPath, it.coverUrl) }
     }
 
@@ -134,4 +134,12 @@ private fun tvMetadata(tv: PhysicalTvSeries): String {
     if (tv.completeSeries) parts.add("Complete")
     if (tv.seriesName != null) parts.add(tv.seriesName)
     return parts.joinToString(" · ")
+}
+
+private fun titleSortKey(title: String): String {
+    val t = title.trim()
+    for (article in listOf("The ", "A ", "An ")) {
+        if (t.startsWith(article, ignoreCase = true)) return t.substring(article.length).lowercase()
+    }
+    return t.lowercase()
 }

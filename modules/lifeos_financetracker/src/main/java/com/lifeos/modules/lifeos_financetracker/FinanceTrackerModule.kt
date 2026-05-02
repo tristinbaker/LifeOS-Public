@@ -71,6 +71,7 @@ class FinanceTrackerModule : LifeOSModule {
                         onEditTransaction = { txId -> moduleNavController.navigate("edit/$txId") },
                         onSettingsClick = { moduleNavController.navigate("settings") },
                         onRecurringClick = { moduleNavController.navigate("recurring") },
+                        onTrendsClick = { moduleNavController.navigate("trends") },
                         onAddAccount = { moduleNavController.navigate("account/create") },
                         onAccountClick = { accountId -> moduleNavController.navigate("account/detail/$accountId") },
                         onPreviousMonth = { viewModel.navigateToPreviousMonth() },
@@ -227,6 +228,14 @@ class FinanceTrackerModule : LifeOSModule {
                         viewModel.saveRecurring(id, label, amount, type, catId, accountId, toAccountId, freq, dom, dow, nextDate, onComplete)
                     },
                     onDelete = { id, onComplete -> viewModel.deleteRecurring(id, onComplete) }
+                )
+            }
+
+            composable("trends") {
+                BackHandler(onBack = { moduleNavController.popBackStack() })
+                TrendsScreen(
+                    uiState = uiState,
+                    onNavigateBack = { moduleNavController.popBackStack() }
                 )
             }
 

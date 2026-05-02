@@ -5,11 +5,13 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
@@ -34,12 +36,14 @@ fun AddEditMovieScreen(
     existingCatalogNumber: String = "",
     existingCoverUrl: String = "",
     existingCoverLocalPath: String = "",
+    existingIsCollection: Boolean = false,
+    existingCollectionItems: List<String> = emptyList(),
     knownBoutiqueLabels: List<String> = emptyList(),
     selectedCoverLocalPath: String? = null,
     onSearchCover: (query: String) -> Unit,
     onNavigateBack: () -> Unit,
     onNavigateBackWithDelete: (() -> Unit)? = null,
-    onSave: (title: String, format: MovieFormat, limitedEdition: Boolean, steelbook: Boolean, slipcover: Boolean, boutiqueLabel: String?, catalogNumber: String?, coverUrl: String?, coverLocalPath: String?) -> Unit
+    onSave: (title: String, format: MovieFormat, limitedEdition: Boolean, steelbook: Boolean, slipcover: Boolean, boutiqueLabel: String?, catalogNumber: String?, coverUrl: String?, coverLocalPath: String?, isCollection: Boolean, collectionItems: List<String>) -> Unit
 ) {
     var title by remember { mutableStateOf(existingTitle) }
     var format by remember { mutableStateOf(existingFormat) }
@@ -51,6 +55,8 @@ fun AddEditMovieScreen(
     var catalogNumberText by remember { mutableStateOf(existingCatalogNumber) }
     var coverUrl by remember { mutableStateOf(existingCoverUrl) }
     var coverLocalPath by remember { mutableStateOf(existingCoverLocalPath) }
+    var isCollection by remember { mutableStateOf(existingIsCollection) }
+    val collectionTitles: SnapshotStateList<String> = remember { mutableStateListOf(*existingCollectionItems.toTypedArray()) }
     var formatMenuExpanded by remember { mutableStateOf(false) }
     var boutiqueLabelFieldFocused by remember { mutableStateOf(false) }
 
@@ -218,6 +224,46 @@ fun AddEditMovieScreen(
             Spacer(Modifier.height(8.dp))
         }
 
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text("Collection?", style = MaterialTheme.typography.bodyLarge)
+            Checkbox(checked = isCollection, onCheckedChange = { isCollection = it })
+        }
+
+        if (isCollection) {
+            Text("Collection Contents", style = MaterialTheme.typography.labelMedium, modifier = Modifier.padding(top = 4.dp, bottom = 4.dp))
+            collectionTitles.forEachIndexed { index, titleText ->
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    OutlinedTextField(
+                        value = titleText,
+                        onValueChange = { collectionTitles[index] = it },
+                        label = { Text("Title ${index + 1}") },
+                        modifier = Modifier.weight(1f),
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words)
+                    )
+                    IconButton(onClick = { collectionTitles.removeAt(index) }) {
+                        Icon(Icons.Default.Delete, "Remove", tint = MaterialTheme.colorScheme.error)
+                    }
+                }
+                Spacer(Modifier.height(4.dp))
+            }
+            TextButton(
+                onClick = { collectionTitles.add("") },
+                modifier = Modifier.align(Alignment.Start)
+            ) {
+                Icon(Icons.Default.Add, null, modifier = Modifier.size(16.dp))
+                Spacer(Modifier.width(4.dp))
+                Text("Add Title")
+            }
+        }
+
         Spacer(Modifier.height(4.dp))
 
         if (coverModel != null) {
@@ -245,7 +291,7 @@ fun AddEditMovieScreen(
             onClick = {
                 val resolvedLabel = if (inBoutiqueLabel) boutiqueLabelText.ifBlank { null } else null
                 val resolvedCatalog = if (inBoutiqueLabel) catalogNumberText.ifBlank { null } else null
-                onSave(title, format, limitedEdition, steelbook, slipcover, resolvedLabel, resolvedCatalog, coverUrl.ifBlank { null }, coverLocalPath.ifBlank { null })
+                onSave(title, format, limitedEdition, steelbook, slipcover, resolvedLabel, resolvedCatalog, coverUrl.ifBlank { null }, coverLocalPath.ifBlank { null }, isCollection, collectionTitles.toList())
             },
             enabled = title.isNotBlank(),
             modifier = Modifier.fillMaxWidth()

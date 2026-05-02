@@ -2,6 +2,7 @@ package com.lifeos.modules.lifeos_physicalmedia.data.local
 
 import androidx.room.*
 import kotlinx.coroutines.flow.Flow
+import androidx.room.OnConflictStrategy
 
 @Dao
 interface PhysicalBookDao {
@@ -55,4 +56,28 @@ interface PhysicalGameDao {
 
     @Query("DELETE FROM physical_games WHERE id = :id")
     suspend fun deleteById(id: Long)
+}
+
+@Dao
+interface PhysicalMovieCollectionItemDao {
+    @Query("SELECT * FROM physical_movie_collection_items")
+    fun getAll(): Flow<List<PhysicalMovieCollectionItemEntity>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAll(items: List<PhysicalMovieCollectionItemEntity>)
+
+    @Query("DELETE FROM physical_movie_collection_items WHERE movieId = :movieId")
+    suspend fun deleteAllForMovie(movieId: Long)
+}
+
+@Dao
+interface PhysicalGameCollectionItemDao {
+    @Query("SELECT * FROM physical_game_collection_items")
+    fun getAll(): Flow<List<PhysicalGameCollectionItemEntity>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAll(items: List<PhysicalGameCollectionItemEntity>)
+
+    @Query("DELETE FROM physical_game_collection_items WHERE gameId = :gameId")
+    suspend fun deleteAllForGame(gameId: Long)
 }
