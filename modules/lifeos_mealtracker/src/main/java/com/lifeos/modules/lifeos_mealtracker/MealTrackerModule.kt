@@ -21,6 +21,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.lifeos.modules.lifeos_mealtracker.ui.addmeal.AddMealViewModel
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavType
@@ -31,6 +32,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.lifeos.core.LifeOSModule
 import com.lifeos.modules.lifeos_mealtracker.ui.addmeal.AddMealScreen
+import com.lifeos.modules.lifeos_mealtracker.ui.scanner.BarcodeScannerScreen
 import com.lifeos.modules.lifeos_mealtracker.ui.analytics.AnalyticsScreen
 import com.lifeos.modules.lifeos_mealtracker.ui.dashboard.DashboardScreen
 import com.lifeos.modules.lifeos_mealtracker.ui.navigation.Screen
@@ -172,13 +174,25 @@ class MealTrackerModule : LifeOSModule {
                     onEditMeal = { mealId -> moduleNavController.navigate("edit_meal/$mealId") }
                 )
             }
-            composable("add_meal") {
+            composable("add_meal") { backStackEntry ->
+                val viewModel: AddMealViewModel = hiltViewModel()
+                val scannedBarcode by backStackEntry.savedStateHandle
+                    .getStateFlow<String?>("scannedBarcode", null)
+                    .collectAsState()
+                LaunchedEffect(scannedBarcode) {
+                    if (scannedBarcode != null) {
+                        backStackEntry.savedStateHandle["scannedBarcode"] = null
+                        viewModel.onBarcodeScanned(scannedBarcode!!)
+                    }
+                }
                 AddMealScreen(
                     mealId = null,
                     onNavigateBack = { moduleNavController.popBackStack() },
                     onShowShame = { calorieExcess ->
                         settingsViewModel.showShameOverlay(calorieExcess)
-                    }
+                    },
+                    onScanBarcode = { moduleNavController.navigate("scan_barcode") },
+                    viewModel = viewModel
                 )
             }
             composable(
@@ -191,7 +205,8 @@ class MealTrackerModule : LifeOSModule {
                     onNavigateBack = { moduleNavController.popBackStack() },
                     onShowShame = { calorieExcess ->
                         settingsViewModel.showShameOverlay(calorieExcess)
-                    }
+                    },
+                    onScanBarcode = { moduleNavController.navigate("scan_barcode") }
                 )
             }
             composable(Screen.Analytics.route) {
@@ -233,6 +248,16 @@ class MealTrackerModule : LifeOSModule {
                 val savedMealId = backStackEntry.arguments?.getLong("savedMealId")?.takeIf { it != -1L }
                 val storedItemId = backStackEntry.arguments?.getLong("storedItemId")?.takeIf { it != -1L }
                 val storedItemQuantity = backStackEntry.arguments?.getFloat("storedItemQuantity")?.toDouble()
+                val viewModel: AddMealViewModel = hiltViewModel()
+                val scannedBarcode by backStackEntry.savedStateHandle
+                    .getStateFlow<String?>("scannedBarcode", null)
+                    .collectAsState()
+                LaunchedEffect(scannedBarcode) {
+                    if (scannedBarcode != null) {
+                        backStackEntry.savedStateHandle["scannedBarcode"] = null
+                        viewModel.onBarcodeScanned(scannedBarcode!!)
+                    }
+                }
                 AddMealScreen(
                     mealId = null,
                     savedMealId = savedMealId,
@@ -241,7 +266,20 @@ class MealTrackerModule : LifeOSModule {
                     onNavigateBack = { moduleNavController.popBackStack() },
                     onShowShame = { calorieExcess ->
                         settingsViewModel.showShameOverlay(calorieExcess)
-                    }
+                    },
+                    onScanBarcode = { moduleNavController.navigate("scan_barcode") },
+                    viewModel = viewModel
+                )
+            }
+            composable("scan_barcode") {
+                BarcodeScannerScreen(
+                    onBarcodeScanned = { barcode ->
+                        moduleNavController.previousBackStackEntry
+                            ?.savedStateHandle
+                            ?.set("scannedBarcode", barcode)
+                        moduleNavController.popBackStack()
+                    },
+                    onNavigateBack = { moduleNavController.popBackStack() }
                 )
             }
             composable("add_stored_item") {

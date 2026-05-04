@@ -4,11 +4,15 @@ import android.content.Context
 import androidx.room.Room
 import com.lifeos.modules.lifeos_financetracker.data.local.*
 import com.lifeos.modules.lifeos_financetracker.notification.RecurringTransactionScheduler
+import com.lifeos.core.ReportDataProvider
+import com.lifeos.modules.lifeos_financetracker.data.repository.FinanceRepository
+import com.lifeos.modules.lifeos_financetracker.report.FinanceReportProvider
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
+import dagger.multibindings.IntoSet
 import javax.inject.Singleton
 
 @Module
@@ -49,4 +53,10 @@ object FinanceModule {
     @Provides @Singleton
     fun provideRecurringTransactionScheduler(@ApplicationContext context: Context): RecurringTransactionScheduler =
         RecurringTransactionScheduler(context)
+
+    @Provides
+    @IntoSet
+    @Singleton
+    fun provideFinanceReportProvider(repository: FinanceRepository): ReportDataProvider =
+        FinanceReportProvider(repository)
 }

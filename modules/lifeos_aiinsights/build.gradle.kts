@@ -9,7 +9,7 @@ plugins {
 }
 
 android {
-    namespace = "com.lifeos.modules.lifeos_mealtracker"
+    namespace = "com.lifeos.modules.lifeos_aiinsights"
     compileSdk = 34
 
     defaultConfig {
@@ -21,15 +21,7 @@ android {
         if (localPropsFile.exists()) {
             localPropsFile.inputStream().use { props.load(it) }
         }
-        buildConfigField("String", "FATSECRET_CLIENT_ID",
-            "\"${props["FATSECRET_CLIENT_ID"] ?: ""}\"")
-        buildConfigField("String", "FATSECRET_CLIENT_SECRET",
-            "\"${props["FATSECRET_CLIENT_SECRET"] ?: ""}\"")
-
-        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        vectorDrawables {
-            useSupportLibrary = true
-        }
+        buildConfigField("String", "GROQ_API_KEY", "\"${props["GROQ_API_KEY"] ?: ""}\"")
     }
 
     buildTypes {
@@ -91,25 +83,8 @@ dependencies {
     implementation("androidx.room:room-ktx:2.6.1")
     ksp("androidx.room:room-compiler:2.6.1")
 
-    implementation("androidx.datastore:datastore-preferences:1.0.0")
-
-    implementation("io.coil-kt:coil-compose:2.5.0")
-
-    implementation("com.patrykandpatrick.vico:compose-m3:1.13.1")
-
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.2")
-
-    // CameraX
-    implementation("androidx.camera:camera-core:1.3.2")
-    implementation("androidx.camera:camera-camera2:1.3.2")
-    implementation("androidx.camera:camera-lifecycle:1.3.2")
-    implementation("androidx.camera:camera-view:1.3.2")
-
-    // ML Kit Barcode Scanning
-    implementation("com.google.mlkit:barcode-scanning:17.2.0")
-
-    // OkHttp (same version as lifeos_aiinsights)
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.2")
 
     implementation(project(":modules:lifeos_core"))
 

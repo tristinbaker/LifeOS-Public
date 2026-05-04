@@ -12,9 +12,10 @@ data class StoredItemEntity(
     val caloriesPerUnit: Int,
     val proteinPerUnit: Int,
     val carbsPerUnit: Int,
-    val fatPerUnit: Int
+    val fatPerUnit: Int,
+    val barcode: String? = null
 ) {
-    fun toDomain() = StoredItem(id, name, caloriesPerUnit, proteinPerUnit, carbsPerUnit, fatPerUnit)
+    fun toDomain() = StoredItem(id, name, caloriesPerUnit, proteinPerUnit, carbsPerUnit, fatPerUnit, barcode)
 }
 
-fun StoredItem.toEntity() = StoredItemEntity(id, name, caloriesPerUnit, proteinPerUnit, carbsPerUnit, fatPerUnit)
+fun StoredItem.toEntity() = StoredItemEntity(id, name, caloriesPerUnit, proteinPerUnit, carbsPerUnit, fatPerUnit, barcode)

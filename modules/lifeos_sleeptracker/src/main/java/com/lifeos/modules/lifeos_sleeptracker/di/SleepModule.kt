@@ -5,11 +5,15 @@ import androidx.room.Room
 import com.lifeos.modules.lifeos_sleeptracker.data.local.SleepDatabase
 import com.lifeos.modules.lifeos_sleeptracker.data.local.SleepLogDao
 import com.lifeos.modules.lifeos_sleeptracker.data.local.SleepSettingsDao
+import com.lifeos.core.ReportDataProvider
+import com.lifeos.modules.lifeos_sleeptracker.data.repository.SleepRepository
+import com.lifeos.modules.lifeos_sleeptracker.report.SleepReportProvider
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
+import dagger.multibindings.IntoSet
 import javax.inject.Singleton
 
 @Module
@@ -36,4 +40,10 @@ object SleepModule {
     fun provideSleepSettingsDao(database: SleepDatabase): SleepSettingsDao {
         return database.sleepSettingsDao()
     }
+
+    @Provides
+    @IntoSet
+    @Singleton
+    fun provideSleepReportProvider(repository: SleepRepository): ReportDataProvider =
+        SleepReportProvider(repository)
 }

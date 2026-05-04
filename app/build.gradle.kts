@@ -106,6 +106,7 @@ dependencies {
     implementation(project(":modules:lifeos_sports"))
     implementation(project(":modules:lifeos_physicalmedia"))
     implementation(project(":modules:lifeos_financetracker"))
+    implementation(project(":modules:lifeos_aiinsights"))
 
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-test-manifest")

@@ -26,6 +26,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.lifeos.modules.lifeos_mealtracker.ui.addmeal.AddMealScreen
+import com.lifeos.modules.lifeos_mealtracker.ui.scanner.BarcodeScannerScreen
 import com.lifeos.modules.lifeos_mealtracker.ui.analytics.AnalyticsScreen
 import com.lifeos.modules.lifeos_mealtracker.ui.dashboard.DashboardScreen
 import com.lifeos.modules.lifeos_mealtracker.ui.savedmeals.SavedMealsScreen
@@ -113,7 +114,8 @@ fun BrutalMealTrackerNavHost(
                 AddMealScreen(
                     mealId = null,
                     onNavigateBack = { navController.popBackStack() },
-                    onShowShame = onShowShame
+                    onShowShame = onShowShame,
+                    onScanBarcode = { navController.navigate("scan_barcode") }
                 )
             }
             composable(
@@ -124,7 +126,8 @@ fun BrutalMealTrackerNavHost(
                 AddMealScreen(
                     mealId = mealId,
                     onNavigateBack = { navController.popBackStack() },
-                    onShowShame = onShowShame
+                    onShowShame = onShowShame,
+                    onScanBarcode = { navController.navigate("scan_barcode") }
                 )
             }
             composable(Screen.Analytics.route) {
@@ -172,7 +175,19 @@ fun BrutalMealTrackerNavHost(
                     storedItemId = storedItemId,
                     storedItemQuantity = storedItemQuantity,
                     onNavigateBack = { navController.popBackStack() },
-                    onShowShame = onShowShame
+                    onShowShame = onShowShame,
+                    onScanBarcode = { navController.navigate("scan_barcode") }
+                )
+            }
+            composable("scan_barcode") {
+                BarcodeScannerScreen(
+                    onBarcodeScanned = { barcode ->
+                        navController.previousBackStackEntry
+                            ?.savedStateHandle
+                            ?.set("scannedBarcode", barcode)
+                        navController.popBackStack()
+                    },
+                    onNavigateBack = { navController.popBackStack() }
                 )
             }
             composable("add_stored_item") {

@@ -29,4 +29,7 @@ class StoredItemRepository @Inject constructor(
 
     suspend fun deleteStoredItem(item: StoredItem) =
         storedItemDao.deleteStoredItem(item.toEntity())
+
+    suspend fun getStoredItemByBarcode(barcode: String): StoredItem? =
+        storedItemDao.getStoredItemByBarcode(barcode)?.toDomain()
 }

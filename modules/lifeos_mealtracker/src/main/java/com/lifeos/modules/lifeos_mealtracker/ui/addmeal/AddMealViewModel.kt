@@ -6,15 +6,29 @@ import com.lifeos.modules.lifeos_mealtracker.data.repository.MealRepository
 import com.lifeos.modules.lifeos_mealtracker.data.repository.SavedMealRepository
 import com.lifeos.modules.lifeos_mealtracker.data.repository.SettingsRepository
 import com.lifeos.modules.lifeos_mealtracker.data.repository.StoredItemRepository
+import com.lifeos.modules.lifeos_mealtracker.domain.model.FatSecretServing
 import com.lifeos.modules.lifeos_mealtracker.domain.model.MealEntry
 import com.lifeos.modules.lifeos_mealtracker.domain.model.MealType
 import com.lifeos.modules.lifeos_mealtracker.domain.model.SavedMeal
 import com.lifeos.modules.lifeos_mealtracker.domain.model.StoredItem
+import com.lifeos.modules.lifeos_mealtracker.domain.usecase.BarcodeLookupResult
+import com.lifeos.modules.lifeos_mealtracker.domain.usecase.LookupBarcodeUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import javax.inject.Inject
+
+sealed class BarcodeState {
+    data object Idle : BarcodeState()
+    data object Loading : BarcodeState()
+    data class ServingSelection(
+        val barcode: String,
+        val foodName: String,
+        val servings: List<FatSecretServing>
+    ) : BarcodeState()
+    data class Error(val message: String) : BarcodeState()
+}
 
 data class AddMealUiState(
     val isEditing: Boolean = false,
@@ -33,7 +47,14 @@ data class AddMealUiState(
     val quantity: Double = 1.0,
     val dailyCalorieGoal: Int = 2000,
     val isLoading: Boolean = false,
-    val shouldShowShame: Boolean = false
+    val shouldShowShame: Boolean = false,
+    val barcodeState: BarcodeState = BarcodeState.Idle,
+    val pendingBarcode: String? = null,
+    val showSaveToStoredItems: Boolean = false,
+    val scannedBaseCalories: Int? = null,
+    val scannedBaseProtein: Int? = null,
+    val scannedBaseCarbs: Int? = null,
+    val scannedBaseFat: Int? = null
 )
 
 @HiltViewModel
@@ -41,7 +62,8 @@ class AddMealViewModel @Inject constructor(
     private val mealRepository: MealRepository,
     private val savedMealRepository: SavedMealRepository,
     private val settingsRepository: SettingsRepository,
-    private val storedItemRepository: StoredItemRepository
+    private val storedItemRepository: StoredItemRepository,
+    private val lookupBarcodeUseCase: LookupBarcodeUseCase
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(AddMealUiState())
@@ -121,7 +143,11 @@ class AddMealViewModel @Inject constructor(
                         protein = (item.proteinPerUnit * qty).toInt().toString(),
                         carbs = (item.carbsPerUnit * qty).toInt().toString(),
                         fat = (item.fatPerUnit * qty).toInt().toString(),
-                        quantity = qty
+                        quantity = qty,
+                        scannedBaseCalories = null,
+                        scannedBaseProtein = null,
+                        scannedBaseCarbs = null,
+                        scannedBaseFat = null
                     )
                 }
             }
@@ -130,15 +156,25 @@ class AddMealViewModel @Inject constructor(
 
     fun updateQuantity(quantity: Double) {
         val state = _uiState.value
-        val item = state.storedItems.find { it.id == state.storedItemId }
-        if (item != null && quantity > 0) {
+        val storedItem = state.storedItems.find { it.id == state.storedItemId }
+        if (storedItem != null && quantity > 0) {
             _uiState.update {
                 it.copy(
                     quantity = quantity,
-                    calories = (item.caloriesPerUnit * quantity).toInt().toString(),
-                    protein = (item.proteinPerUnit * quantity).toInt().toString(),
-                    carbs = (item.carbsPerUnit * quantity).toInt().toString(),
-                    fat = (item.fatPerUnit * quantity).toInt().toString()
+                    calories = (storedItem.caloriesPerUnit * quantity).toInt().toString(),
+                    protein = (storedItem.proteinPerUnit * quantity).toInt().toString(),
+                    carbs = (storedItem.carbsPerUnit * quantity).toInt().toString(),
+                    fat = (storedItem.fatPerUnit * quantity).toInt().toString()
+                )
+            }
+        } else if (state.scannedBaseCalories != null && quantity > 0) {
+            _uiState.update {
+                it.copy(
+                    quantity = quantity,
+                    calories = ((state.scannedBaseCalories) * quantity).toInt().toString(),
+                    protein = ((state.scannedBaseProtein ?: 0) * quantity).toInt().toString(),
+                    carbs = ((state.scannedBaseCarbs ?: 0) * quantity).toInt().toString(),
+                    fat = ((state.scannedBaseFat ?: 0) * quantity).toInt().toString()
                 )
             }
         } else {
@@ -182,6 +218,102 @@ class AddMealViewModel @Inject constructor(
 
     fun updateSaveAsFavorite(save: Boolean) {
         _uiState.update { it.copy(saveAsFavorite = save) }
+    }
+
+    fun onBarcodeScanned(barcode: String) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(barcodeState = BarcodeState.Loading) }
+            when (val result = lookupBarcodeUseCase(barcode)) {
+                is BarcodeLookupResult.CachedItem -> {
+                    val item = result.item
+                    _uiState.update {
+                        it.copy(
+                            barcodeState = BarcodeState.Idle,
+                            storedItemId = item.id,
+                            name = item.name,
+                            calories = item.caloriesPerUnit.toString(),
+                            protein = item.proteinPerUnit.toString(),
+                            carbs = item.carbsPerUnit.toString(),
+                            fat = item.fatPerUnit.toString(),
+                            quantity = 1.0,
+                            pendingBarcode = null,
+                            showSaveToStoredItems = false,
+                            scannedBaseCalories = null,
+                            scannedBaseProtein = null,
+                            scannedBaseCarbs = null,
+                            scannedBaseFat = null
+                        )
+                    }
+                }
+                is BarcodeLookupResult.RemoteServings -> {
+                    _uiState.update {
+                        it.copy(
+                            barcodeState = BarcodeState.ServingSelection(
+                                barcode = barcode,
+                                foodName = result.foodName,
+                                servings = result.servings
+                            ),
+                            pendingBarcode = barcode
+                        )
+                    }
+                }
+                is BarcodeLookupResult.NotFound -> {
+                    _uiState.update {
+                        it.copy(barcodeState = BarcodeState.Error("No food found for this barcode"))
+                    }
+                }
+                is BarcodeLookupResult.Error -> {
+                    _uiState.update {
+                        it.copy(barcodeState = BarcodeState.Error(result.message))
+                    }
+                }
+            }
+        }
+    }
+
+    fun selectServing(serving: FatSecretServing) {
+        val barcodeState = _uiState.value.barcodeState
+        if (barcodeState !is BarcodeState.ServingSelection) return
+        _uiState.update {
+            it.copy(
+                barcodeState = BarcodeState.Idle,
+                name = barcodeState.foodName,
+                calories = serving.calories.toString(),
+                protein = serving.protein.toString(),
+                carbs = serving.carbs.toString(),
+                fat = serving.fat.toString(),
+                storedItemId = null,
+                quantity = 1.0,
+                showSaveToStoredItems = true,
+                scannedBaseCalories = serving.calories,
+                scannedBaseProtein = serving.protein,
+                scannedBaseCarbs = serving.carbs,
+                scannedBaseFat = serving.fat
+            )
+        }
+    }
+
+    fun dismissBarcodeError() {
+        _uiState.update { it.copy(barcodeState = BarcodeState.Idle) }
+    }
+
+    fun saveScannedFoodToStoredItems() {
+        val state = _uiState.value
+        if (!state.showSaveToStoredItems || state.pendingBarcode == null) return
+        viewModelScope.launch {
+            val newItem = StoredItem(
+                name = state.name,
+                caloriesPerUnit = state.scannedBaseCalories ?: (state.calories.toIntOrNull() ?: 0),
+                proteinPerUnit = state.scannedBaseProtein ?: (state.protein.toIntOrNull() ?: 0),
+                carbsPerUnit = state.scannedBaseCarbs ?: (state.carbs.toIntOrNull() ?: 0),
+                fatPerUnit = state.scannedBaseFat ?: (state.fat.toIntOrNull() ?: 0),
+                barcode = state.pendingBarcode
+            )
+            storedItemRepository.insertStoredItem(newItem)
+            _uiState.update {
+                it.copy(showSaveToStoredItems = false, pendingBarcode = null)
+            }
+        }
     }
 
     fun saveMeal(onSuccess: () -> Unit, onShowShame: (Int) -> Unit) {

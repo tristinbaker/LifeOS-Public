@@ -6,5 +6,6 @@ data class StoredItem(
     val caloriesPerUnit: Int,
     val proteinPerUnit: Int,
     val carbsPerUnit: Int,
-    val fatPerUnit: Int
+    val fatPerUnit: Int,
+    val barcode: String? = null
 )

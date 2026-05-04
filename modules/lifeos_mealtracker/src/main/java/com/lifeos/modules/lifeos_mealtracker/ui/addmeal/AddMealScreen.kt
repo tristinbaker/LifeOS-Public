@@ -8,6 +8,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.CalendarToday
+import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -16,6 +17,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.lifeos.modules.lifeos_mealtracker.domain.model.FatSecretServing
 import com.lifeos.modules.lifeos_mealtracker.domain.model.MealType
 import com.lifeos.modules.lifeos_mealtracker.domain.model.SavedMeal
 import com.lifeos.modules.lifeos_mealtracker.domain.model.StoredItem
@@ -31,6 +33,7 @@ fun AddMealScreen(
     storedItemQuantity: Double? = null,
     onNavigateBack: () -> Unit,
     onShowShame: (Int) -> Unit,
+    onScanBarcode: () -> Unit = {},
     viewModel: AddMealViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -66,274 +69,345 @@ fun AddMealScreen(
                     IconButton(onClick = onNavigateBack) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "Back")
                     }
+                },
+                actions = {
+                    if (!uiState.isEditing) {
+                        IconButton(onClick = onScanBarcode) {
+                            Icon(Icons.Default.QrCodeScanner, contentDescription = "Scan barcode")
+                        }
+                    }
                 }
             )
         }
     ) { paddingValues ->
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-                .padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            item {
-                Spacer(modifier = Modifier.height(8.dp))
-            }
+        Box(modifier = Modifier.fillMaxSize()) {
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+                    .padding(horizontal = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                // Loading bar for barcode lookup
+                if (uiState.barcodeState is BarcodeState.Loading) {
+                    item {
+                        LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                    }
+                }
 
-            item {
-                OutlinedCard(
-                    onClick = { showDatePicker = true },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                item {
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
+
+                item {
+                    OutlinedCard(
+                        onClick = { showDatePicker = true },
+                        modifier = Modifier.fillMaxWidth()
                     ) {
-                        Column {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column {
+                                Text(
+                                    text = "Date",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Text(
+                                    text = uiState.date.format(DateTimeFormatter.ofPattern("EEEE, MMM d, yyyy")),
+                                    style = MaterialTheme.typography.bodyLarge
+                                )
+                            }
+                            Icon(
+                                Icons.Default.CalendarToday,
+                                contentDescription = "Select date",
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    }
+                }
+
+                item {
+                    Text(
+                        text = "Meal Type",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    LazyRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        items(MealType.entries) { type ->
+                            FilterChip(
+                                selected = uiState.mealType == type,
+                                onClick = { viewModel.updateMealType(type) },
+                                label = {
+                                    Text(
+                                        when (type) {
+                                            MealType.BREAKFAST -> "🍳 Breakfast"
+                                            MealType.LUNCH -> "🍽️ Lunch"
+                                            MealType.DINNER -> "🌙 Dinner"
+                                            MealType.SNACK -> "🍿 Snack"
+                                        }
+                                    )
+                                }
+                            )
+                        }
+                    }
+                }
+
+                if (uiState.savedMeals.isNotEmpty()) {
+                    item {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
                             Text(
-                                text = "Date",
-                                style = MaterialTheme.typography.labelMedium,
+                                text = "Saved Meals",
+                                style = MaterialTheme.typography.labelLarge,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
+                            TextButton(onClick = { showSavedMeals = !showSavedMeals }) {
+                                Text(if (showSavedMeals) "Hide" else "Show")
+                            }
+                        }
+                    }
+
+                    if (showSavedMeals) {
+                        item {
+                            LazyRow(
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                items(uiState.savedMeals) { meal ->
+                                    SavedMealChip(
+                                        meal = meal,
+                                        onClick = {
+                                            viewModel.updateMealType(meal.mealType)
+                                            viewModel.updateName(meal.name)
+                                            viewModel.updateCalories(meal.calories.toString())
+                                            viewModel.updateProtein(meal.protein.toString())
+                                            viewModel.updateCarbs(meal.carbs.toString())
+                                            viewModel.updateFat(meal.fat.toString())
+                                        }
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if (uiState.storedItems.isNotEmpty()) {
+                    item {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
                             Text(
-                                text = uiState.date.format(DateTimeFormatter.ofPattern("EEEE, MMM d, yyyy")),
+                                text = "Stored Items",
+                                style = MaterialTheme.typography.labelLarge,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            TextButton(onClick = { showStoredItems = !showStoredItems }) {
+                                Text(if (showStoredItems) "Hide" else "Show")
+                            }
+                        }
+                    }
+
+                    if (showStoredItems) {
+                        item {
+                            LazyRow(
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                items(uiState.storedItems) { item ->
+                                    StoredItemChip(
+                                        item = item,
+                                        onClick = { viewModel.loadStoredItem(item.id) }
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if (uiState.storedItemId != null || uiState.scannedBaseCalories != null) {
+                    item {
+                        StoredItemQuantityInput(
+                            quantity = uiState.quantity,
+                            onQuantityChange = { viewModel.updateQuantity(it) },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                }
+
+                // "Save to stored items" banner after scanning a new item
+                if (uiState.showSaveToStoredItems) {
+                    item {
+                        Card(
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.tertiaryContainer
+                            ),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(12.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "Save this food for future scans?",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onTertiaryContainer,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                TextButton(onClick = { viewModel.saveScannedFoodToStoredItems() }) {
+                                    Text("Save")
+                                }
+                            }
+                        }
+                    }
+                }
+
+                item {
+                    OutlinedTextField(
+                        value = uiState.name,
+                        onValueChange = { viewModel.updateName(it) },
+                        label = { Text("Meal Name (optional)") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
+                    )
+                }
+
+                item {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        OutlinedTextField(
+                            value = uiState.calories,
+                            onValueChange = { viewModel.updateCalories(it) },
+                            label = { Text("Calories") },
+                            modifier = Modifier.weight(1f),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            singleLine = true
+                        )
+                        OutlinedTextField(
+                            value = uiState.protein,
+                            onValueChange = { viewModel.updateProtein(it) },
+                            label = { Text("Protein (g)") },
+                            modifier = Modifier.weight(1f),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            singleLine = true
+                        )
+                    }
+                }
+
+                item {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        OutlinedTextField(
+                            value = uiState.carbs,
+                            onValueChange = { viewModel.updateCarbs(it) },
+                            label = { Text("Carbs (g)") },
+                            modifier = Modifier.weight(1f),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            singleLine = true
+                        )
+                        OutlinedTextField(
+                            value = uiState.fat,
+                            onValueChange = { viewModel.updateFat(it) },
+                            label = { Text("Fat (g)") },
+                            modifier = Modifier.weight(1f),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            singleLine = true
+                        )
+                    }
+                }
+
+                if (!uiState.isEditing) {
+                    item {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "Save as favorite meal",
                                 style = MaterialTheme.typography.bodyLarge
                             )
+                            Switch(
+                                checked = uiState.saveAsFavorite,
+                                onCheckedChange = { viewModel.updateSaveAsFavorite(it) }
+                            )
                         }
-                        Icon(
-                            Icons.Default.CalendarToday,
-                            contentDescription = "Select date",
-                            tint = MaterialTheme.colorScheme.primary
-                        )
                     }
                 }
-            }
 
-            item {
-                Text(
-                    text = "Meal Type",
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                LazyRow(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    items(MealType.entries) { type ->
-                        FilterChip(
-                            selected = uiState.mealType == type,
-                            onClick = { viewModel.updateMealType(type) },
-                            label = {
-                                Text(
-                                    when (type) {
-                                        MealType.BREAKFAST -> "🍳 Breakfast"
-                                        MealType.LUNCH -> "🍽️ Lunch"
-                                        MealType.DINNER -> "🌙 Dinner"
-                                        MealType.SNACK -> "🍿 Snack"
-                                    }
-                                )
-                            }
-                        )
-                    }
-                }
-            }
-
-            if (uiState.savedMeals.isNotEmpty()) {
                 item {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Button(
+                        onClick = {
+                            viewModel.saveMeal(onNavigateBack, onShowShame)
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(56.dp),
+                        enabled = uiState.calories.isNotBlank() && !uiState.isLoading
                     ) {
-                        Text(
-                            text = "Saved Meals",
-                            style = MaterialTheme.typography.labelLarge,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        TextButton(onClick = { showSavedMeals = !showSavedMeals }) {
-                            Text(if (showSavedMeals) "Hide" else "Show")
+                        if (uiState.isLoading) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(24.dp),
+                                color = MaterialTheme.colorScheme.onPrimary
+                            )
+                        } else {
+                            Text(
+                                text = if (uiState.isEditing) "Update Meal" else "Add Meal",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
+                            )
                         }
                     }
                 }
 
-                if (showSavedMeals) {
-                    item {
-                        LazyRow(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            items(uiState.savedMeals) { meal ->
-                                SavedMealChip(
-                                    meal = meal,
-                                    onClick = {
-                                        viewModel.updateMealType(meal.mealType)
-                                        viewModel.updateName(meal.name)
-                                        viewModel.updateCalories(meal.calories.toString())
-                                        viewModel.updateProtein(meal.protein.toString())
-                                        viewModel.updateCarbs(meal.carbs.toString())
-                                        viewModel.updateFat(meal.fat.toString())
-                                    }
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-
-            if (uiState.storedItems.isNotEmpty()) {
                 item {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "Stored Items",
-                            style = MaterialTheme.typography.labelLarge,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        TextButton(onClick = { showStoredItems = !showStoredItems }) {
-                            Text(if (showStoredItems) "Hide" else "Show")
-                        }
-                    }
+                    Spacer(modifier = Modifier.height(32.dp))
                 }
-
-                if (showStoredItems) {
-                    item {
-                        LazyRow(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            items(uiState.storedItems) { item ->
-                                StoredItemChip(
-                                    item = item,
-                                    onClick = { viewModel.loadStoredItem(item.id) }
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-
-            if (uiState.storedItemId != null) {
-                item {
-                    StoredItemQuantityInput(
-                        quantity = uiState.quantity,
-                        onQuantityChange = { viewModel.updateQuantity(it) },
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
-            }
-
-            item {
-                OutlinedTextField(
-                    value = uiState.name,
-                    onValueChange = { viewModel.updateName(it) },
-                    label = { Text("Meal Name (optional)") },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
-                )
-            }
-
-            item {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    OutlinedTextField(
-                        value = uiState.calories,
-                        onValueChange = { viewModel.updateCalories(it) },
-                        label = { Text("Calories") },
-                        modifier = Modifier.weight(1f),
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        singleLine = true
-                    )
-                    OutlinedTextField(
-                        value = uiState.protein,
-                        onValueChange = { viewModel.updateProtein(it) },
-                        label = { Text("Protein (g)") },
-                        modifier = Modifier.weight(1f),
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        singleLine = true
-                    )
-                }
-            }
-
-            item {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    OutlinedTextField(
-                        value = uiState.carbs,
-                        onValueChange = { viewModel.updateCarbs(it) },
-                        label = { Text("Carbs (g)") },
-                        modifier = Modifier.weight(1f),
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        singleLine = true
-                    )
-                    OutlinedTextField(
-                        value = uiState.fat,
-                        onValueChange = { viewModel.updateFat(it) },
-                        label = { Text("Fat (g)") },
-                        modifier = Modifier.weight(1f),
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        singleLine = true
-                    )
-                }
-            }
-
-            if (!uiState.isEditing) {
-                item {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "Save as favorite meal",
-                            style = MaterialTheme.typography.bodyLarge
-                        )
-                        Switch(
-                            checked = uiState.saveAsFavorite,
-                            onCheckedChange = { viewModel.updateSaveAsFavorite(it) }
-                        )
-                    }
-                }
-            }
-
-            item {
-                Spacer(modifier = Modifier.height(16.dp))
-                Button(
-                    onClick = {
-                        viewModel.saveMeal(onNavigateBack, onShowShame)
-                    },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(56.dp),
-                    enabled = uiState.calories.isNotBlank() && !uiState.isLoading
-                ) {
-                    if (uiState.isLoading) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(24.dp),
-                            color = MaterialTheme.colorScheme.onPrimary
-                        )
-                    } else {
-                        Text(
-                            text = if (uiState.isEditing) "Update Meal" else "Add Meal",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                }
-            }
-
-            item {
-                Spacer(modifier = Modifier.height(32.dp))
             }
         }
+    }
+
+    // Serving selection bottom sheet
+    val barcodeState = uiState.barcodeState
+    if (barcodeState is BarcodeState.ServingSelection) {
+        ServingSelectionBottomSheet(
+            foodName = barcodeState.foodName,
+            servings = barcodeState.servings,
+            onServingSelected = { viewModel.selectServing(it) },
+            onDismiss = { viewModel.dismissBarcodeError() }
+        )
+    }
+
+    // Error dialog
+    if (barcodeState is BarcodeState.Error) {
+        AlertDialog(
+            onDismissRequest = { viewModel.dismissBarcodeError() },
+            title = { Text("Barcode Lookup Failed") },
+            text = { Text(barcodeState.message) },
+            confirmButton = {
+                TextButton(onClick = { viewModel.dismissBarcodeError() }) {
+                    Text("OK")
+                }
+            }
+        )
     }
 
     if (showDatePicker) {
@@ -365,6 +439,58 @@ fun AddMealScreen(
             }
         ) {
             DatePicker(state = datePickerState)
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ServingSelectionBottomSheet(
+    foodName: String,
+    servings: List<FatSecretServing>,
+    onServingSelected: (FatSecretServing) -> Unit,
+    onDismiss: () -> Unit
+) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState
+    ) {
+        Column(modifier = Modifier.padding(horizontal = 16.dp)) {
+            Text(
+                text = foodName,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold
+            )
+            Text(
+                text = "Choose a serving size",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(Modifier.height(12.dp))
+            servings.forEach { serving ->
+                OutlinedCard(
+                    onClick = { onServingSelected(serving) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 8.dp)
+                ) {
+                    Column(modifier = Modifier.padding(12.dp)) {
+                        Text(
+                            text = serving.description,
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = FontWeight.Medium
+                        )
+                        Text(
+                            text = "${serving.calories} cal  |  P: ${serving.protein}g  C: ${serving.carbs}g  F: ${serving.fat}g",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+            Spacer(Modifier.height(32.dp))
         }
     }
 }

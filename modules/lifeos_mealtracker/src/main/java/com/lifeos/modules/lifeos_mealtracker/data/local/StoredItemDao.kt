@@ -19,4 +19,7 @@ interface StoredItemDao {
 
     @Delete
     suspend fun deleteStoredItem(item: StoredItemEntity)
+
+    @Query("SELECT * FROM lifeos_mealtracker_stored_items WHERE barcode = :barcode LIMIT 1")
+    suspend fun getStoredItemByBarcode(barcode: String): StoredItemEntity?
 }

@@ -40,6 +40,7 @@ import com.lifeos.modules.lifeos_sports.notification.GameAlertScheduler
 import com.lifeos.modules.lifeos_financetracker.notification.RecurringTransactionScheduler
 import com.lifeos.modules.lifeos_physicalmedia.PhysicalMediaModule
 import com.lifeos.modules.lifeos_financetracker.FinanceTrackerModule
+import com.lifeos.modules.lifeos_aiinsights.AiInsightsModule
 import com.tristinbaker.lifeos.backup.BackupPreferences
 import com.tristinbaker.lifeos.ui.home.HomeScreen
 import com.tristinbaker.lifeos.ui.theme.LifeOSTheme
@@ -68,6 +69,7 @@ class MainActivity : AppCompatActivity() {
         ModuleRegistry.register(MediaLoggerModule())
         ModuleRegistry.register(PhysicalMediaModule())
         ModuleRegistry.register(FinanceTrackerModule())
+        ModuleRegistry.register(AiInsightsModule())
 
         val initialModule = intent?.getStringExtra("module")
         val initialNoteId = if (initialModule == "notes") {
@@ -251,6 +253,14 @@ fun LifeOSNavHost(
 
         composable("finance") {
             val module = ModuleRegistry.getModule("finance")
+            module?.Content(
+                onNavigateBack = { navController.popBackStack() },
+                initialId = null
+            )
+        }
+
+        composable("aiinsights") {
+            val module = ModuleRegistry.getModule("aiinsights")
             module?.Content(
                 onNavigateBack = { navController.popBackStack() },
                 initialId = null
