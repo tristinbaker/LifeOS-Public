@@ -50,7 +50,7 @@ fun RecurringEditorScreen(
     var selectedToAccountId by remember(existing?.id) { mutableStateOf(existing?.toAccountId) }
     var selectedCategoryId by remember(existing?.id) { mutableStateOf(existing?.categoryId?.takeIf { it != 0L }) }
     var selectedFrequency by remember(existing?.id) { mutableStateOf(existing?.frequency ?: RecurringFrequency.MONTHLY) }
-    var dayOfMonth by remember(existing?.id) { mutableStateOf(existing?.dayOfMonth ?: 1) }
+    var dayOfMonthText by remember(existing?.id) { mutableStateOf(existing?.dayOfMonth?.toString() ?: "") }
     var dayOfWeek by remember(existing?.id) { mutableStateOf(existing?.dayOfWeek ?: 1) }
     var startDate by remember(existing?.id) {
         mutableStateOf(
@@ -82,7 +82,7 @@ fun RecurringEditorScreen(
     if (frequencyPressed) frequencyMenuExpanded = true
 
     val isTransfer = selectedType == TransactionType.TRANSFER
-    val needsDayOfMonth = selectedFrequency == RecurringFrequency.MONTHLY
+    val needsDayOfMonth = selectedFrequency in setOf(RecurringFrequency.MONTHLY, RecurringFrequency.QUARTERLY, RecurringFrequency.SEMI_ANNUAL, RecurringFrequency.YEARLY)
     val needsDayOfWeek = selectedFrequency == RecurringFrequency.WEEKLY || selectedFrequency == RecurringFrequency.BIWEEKLY
 
     val isSaveEnabled = label.isNotBlank() &&
@@ -186,7 +186,7 @@ fun RecurringEditorScreen(
                         value = accounts.find { it.account.id == selectedToAccountId }?.account?.name ?: "",
                         onValueChange = {},
                         readOnly = true,
-                        label = { Text("To Account (paying off)") },
+                        label = { Text("To Account") },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = toAccountMenuExpanded) },
                         interactionSource = toAccountSource,
                         modifier = Modifier.menuAnchor().fillMaxWidth()
@@ -246,9 +246,11 @@ fun RecurringEditorScreen(
 
             if (needsDayOfMonth) {
                 OutlinedTextField(
-                    value = dayOfMonth.toString(),
+                    value = dayOfMonthText,
                     onValueChange = { v ->
-                        v.toIntOrNull()?.let { n -> dayOfMonth = n.coerceIn(1, 31) }
+                        val digits = v.filter { it.isDigit() }
+                        val n = digits.toIntOrNull()
+                        dayOfMonthText = if (digits.isEmpty()) "" else if (n != null && n <= 31) digits else dayOfMonthText
                     },
                     label = { Text("Day of Month (1–31)") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
@@ -284,7 +286,7 @@ fun RecurringEditorScreen(
                         existing?.id, label, amount, selectedType, categoryId, accountId,
                         if (isTransfer) selectedToAccountId else null,
                         selectedFrequency,
-                        if (needsDayOfMonth) dayOfMonth else null,
+                        if (needsDayOfMonth) dayOfMonthText.toIntOrNull()?.coerceIn(1, 31) ?: 1 else null,
                         if (needsDayOfWeek) dayOfWeek else null,
                         startDate.format(isoFormatter)
                     ) { onNavigateBack() }
@@ -335,4 +337,7 @@ private fun RecurringFrequency.displayName(): String = when (this) {
     RecurringFrequency.WEEKLY -> "Weekly"
     RecurringFrequency.BIWEEKLY -> "Bi-weekly"
     RecurringFrequency.MONTHLY -> "Monthly"
+    RecurringFrequency.QUARTERLY -> "Quarterly"
+    RecurringFrequency.SEMI_ANNUAL -> "Every 6 Months"
+    RecurringFrequency.YEARLY -> "Yearly"
 }

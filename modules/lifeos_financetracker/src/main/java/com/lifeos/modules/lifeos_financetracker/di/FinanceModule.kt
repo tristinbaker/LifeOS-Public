@@ -4,9 +4,12 @@ import android.content.Context
 import androidx.room.Room
 import com.lifeos.modules.lifeos_financetracker.data.local.*
 import com.lifeos.modules.lifeos_financetracker.notification.RecurringTransactionScheduler
+import com.lifeos.core.InsightProvider
 import com.lifeos.core.ReportDataProvider
+import com.lifeos.core.UserPrefs
 import com.lifeos.modules.lifeos_financetracker.data.repository.FinanceRepository
 import com.lifeos.modules.lifeos_financetracker.report.FinanceReportProvider
+import com.lifeos.modules.lifeos_financetracker.report.RetirementOutlookInsightProvider
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -23,7 +26,7 @@ object FinanceModule {
     @Singleton
     fun provideFinanceDatabase(@ApplicationContext context: Context): FinanceDatabase =
         Room.databaseBuilder(context, FinanceDatabase::class.java, "lifeos_financetracker.db")
-            .addMigrations(MIGRATION_1_2)
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
             .build()
 
     @Provides @Singleton
@@ -51,6 +54,15 @@ object FinanceModule {
     fun provideNetWorthHistoryDao(db: FinanceDatabase): NetWorthHistoryDao = db.netWorthHistoryDao()
 
     @Provides @Singleton
+    fun provideSinkingFundDao(db: FinanceDatabase): SinkingFundDao = db.sinkingFundDao()
+
+    @Provides @Singleton
+    fun provideSinkingFundContributionDao(db: FinanceDatabase): SinkingFundContributionDao = db.sinkingFundContributionDao()
+
+    @Provides @Singleton
+    fun providePersonalCardPaymentDao(db: FinanceDatabase): PersonalCardPaymentDao = db.personalCardPaymentDao()
+
+    @Provides @Singleton
     fun provideRecurringTransactionScheduler(@ApplicationContext context: Context): RecurringTransactionScheduler =
         RecurringTransactionScheduler(context)
 
@@ -59,4 +71,15 @@ object FinanceModule {
     @Singleton
     fun provideFinanceReportProvider(repository: FinanceRepository): ReportDataProvider =
         FinanceReportProvider(repository)
+
+    @Provides
+    @IntoSet
+    @Singleton
+    fun provideRetirementOutlookInsightProvider(
+        netWorthDao: NetWorthHistoryDao,
+        sinkingFundDao: SinkingFundDao,
+        accountDao: AccountDao,
+        accountSnapshotDao: AccountSnapshotDao,
+        userPrefs: UserPrefs
+    ): InsightProvider = RetirementOutlookInsightProvider(netWorthDao, sinkingFundDao, accountDao, accountSnapshotDao, userPrefs)
 }

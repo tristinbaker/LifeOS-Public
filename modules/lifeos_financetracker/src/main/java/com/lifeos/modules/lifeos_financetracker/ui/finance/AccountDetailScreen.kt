@@ -95,11 +95,11 @@ fun AccountDetailScreen(
                 }
             }
 
-            // Snapshot update button for snapshot accounts
-            if (awb.account.type.isSnapshot()) {
+            // Sure up balance — available for all non-mortgage accounts
+            if (awb.account.type != AccountType.MORTGAGE) {
                 item {
-                    Button(onClick = { showSnapshotDialog = true }, modifier = Modifier.fillMaxWidth()) {
-                        Text("Update Balance")
+                    OutlinedButton(onClick = { showSnapshotDialog = true }, modifier = Modifier.fillMaxWidth()) {
+                        Text("Sure Up Balance")
                     }
                 }
             }
@@ -109,10 +109,17 @@ fun AccountDetailScreen(
                 item {
                     Text("Transaction History", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                 }
-                items(transactions, key = { it.id }) { tx ->
-                    val category = categories.find { it.id == tx.categoryId }
-                    val account = accounts.find { it.account.id == tx.accountId }?.account
-                    TransactionCard(transaction = tx, category = category, account = account, onClick = {})
+                val groupedTx = transactions.groupBy { it.date }
+                val sortedDates = groupedTx.keys.sortedDescending()
+                for (date in sortedDates) {
+                    item(key = "header_$date") {
+                        DateSeparatorHeader(date)
+                    }
+                    items(groupedTx[date]!!, key = { it.id }) { tx ->
+                        val category = categories.find { it.id == tx.categoryId }
+                        val account = accounts.find { it.account.id == tx.accountId }?.account
+                        TransactionCard(transaction = tx, category = category, account = account, onClick = {})
+                    }
                 }
             } else {
                 item {

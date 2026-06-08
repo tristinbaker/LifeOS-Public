@@ -7,6 +7,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -133,6 +134,9 @@ private fun RecurringRow(
                     color = if (item.isActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
                 )
             }
+            IconButton(onClick = onEdit) {
+                Icon(Icons.Default.Edit, contentDescription = "Edit")
+            }
             Switch(checked = item.isActive, onCheckedChange = onToggle)
             IconButton(onClick = onDelete) {
                 Icon(Icons.Default.Delete, contentDescription = "Delete", tint = MaterialTheme.colorScheme.error)
@@ -146,6 +150,9 @@ private fun frequencyDescription(item: RecurringTransactionEntity): String = whe
     RecurringFrequency.WEEKLY -> item.dayOfWeek?.let { "Weekly on ${dayName(it)}" } ?: "Weekly"
     RecurringFrequency.BIWEEKLY -> item.dayOfWeek?.let { "Every 2 weeks on ${dayName(it)}" } ?: "Bi-weekly"
     RecurringFrequency.MONTHLY -> item.dayOfMonth?.let { "Monthly on the ${ordinal(it)}" } ?: "Monthly"
+    RecurringFrequency.QUARTERLY -> item.dayOfMonth?.let { "Quarterly on the ${ordinal(it)}" } ?: "Quarterly"
+    RecurringFrequency.SEMI_ANNUAL -> item.dayOfMonth?.let { "Every 6 months on the ${ordinal(it)}" } ?: "Semi-annual"
+    RecurringFrequency.YEARLY -> item.dayOfMonth?.let { "Yearly on the ${ordinal(it)}" } ?: "Yearly"
 }
 
 private fun dayName(dow: Int): String = listOf("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun").getOrElse(dow - 1) { "?" }

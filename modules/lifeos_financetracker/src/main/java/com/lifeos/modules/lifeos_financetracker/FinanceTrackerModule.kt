@@ -77,6 +77,8 @@ class FinanceTrackerModule : LifeOSModule {
                         onPreviousMonth = { viewModel.navigateToPreviousMonth() },
                         onNextMonth = { viewModel.navigateToNextMonth() },
                         onTodayClick = { viewModel.navigateToCurrentMonth() },
+                        onSinkingFundsClick = { moduleNavController.navigate("sinking_funds") },
+                        onPersonalCardClick = { moduleNavController.navigate("personal_card") },
                         modifier = Modifier.weight(1f)
                     )
                 }
@@ -178,7 +180,7 @@ class FinanceTrackerModule : LifeOSModule {
                         onNavigateBack = { moduleNavController.popBackStack() },
                         onEditAccount = { moduleNavController.navigate("account/edit/$accountId") },
                         onUpdateSnapshot = { balance, onComplete ->
-                            viewModel.updateSnapshot(awb.account.id, balance, onComplete)
+                            viewModel.updateSnapshot(awb, balance, onComplete)
                         }
                     )
                 }
@@ -257,6 +259,72 @@ class FinanceTrackerModule : LifeOSModule {
                     onRemoveBudget = { catId, onComplete ->
                         viewModel.removeBudget(catId, onComplete)
                     }
+                )
+            }
+
+            composable("sinking_funds") {
+                BackHandler(onBack = { moduleNavController.popBackStack() })
+                SinkingFundsScreen(
+                    funds = uiState.sinkingFunds,
+                    onNavigateBack = { moduleNavController.popBackStack() },
+                    onAddFund = { moduleNavController.navigate("sinking_funds/create") },
+                    onEditFund = { id -> moduleNavController.navigate("sinking_funds/edit/$id") },
+                    onLogContribution = { fundId, amount, date, onComplete ->
+                        viewModel.logSinkingContribution(fundId, amount, date, onComplete)
+                    },
+                    onDeleteContribution = { id, onComplete ->
+                        viewModel.deleteContribution(id, onComplete)
+                    }
+                )
+            }
+
+            composable("personal_card") {
+                BackHandler(onBack = { moduleNavController.popBackStack() })
+                PersonalCardScreen(
+                    balance = uiState.personalCardBalance,
+                    personalTransactions = uiState.personalCardTransactions,
+                    payments = uiState.personalCardPayments,
+                    categories = uiState.categories,
+                    onNavigateBack = { moduleNavController.popBackStack() },
+                    onAddPayment = { amountCents, note, date, onComplete ->
+                        viewModel.addPersonalCardPayment(amountCents, note, date, onComplete)
+                    },
+                    onDeletePayment = { id, onComplete ->
+                        viewModel.deletePersonalCardPayment(id, onComplete)
+                    }
+                )
+            }
+
+            composable("sinking_funds/create") {
+                BackHandler(onBack = { moduleNavController.popBackStack() })
+                SinkingFundEditorScreen(
+                    existing = null,
+                    accounts = uiState.accounts,
+                    categories = uiState.categories,
+                    onNavigateBack = { moduleNavController.popBackStack() },
+                    onSave = { id, name, target, initial, date, color, accountId, catId, dayOfMonth, onComplete ->
+                        viewModel.saveSinkingFund(id, name, target, initial, date, color, accountId, catId, dayOfMonth, onComplete)
+                    },
+                    onDelete = null
+                )
+            }
+
+            composable(
+                route = "sinking_funds/edit/{fundId}",
+                arguments = listOf(navArgument("fundId") { type = NavType.LongType })
+            ) { backStackEntry ->
+                val fundId = backStackEntry.arguments?.getLong("fundId")
+                val fund = uiState.sinkingFunds.find { it.fund.id == fundId }?.fund
+                BackHandler(onBack = { moduleNavController.popBackStack() })
+                SinkingFundEditorScreen(
+                    existing = fund,
+                    accounts = uiState.accounts,
+                    categories = uiState.categories,
+                    onNavigateBack = { moduleNavController.popBackStack() },
+                    onSave = { id, name, target, initial, date, color, accountId, catId, dayOfMonth, onComplete ->
+                        viewModel.saveSinkingFund(id, name, target, initial, date, color, accountId, catId, dayOfMonth, onComplete)
+                    },
+                    onDelete = { id, onComplete -> viewModel.deleteSinkingFund(id, onComplete) }
                 )
             }
         }

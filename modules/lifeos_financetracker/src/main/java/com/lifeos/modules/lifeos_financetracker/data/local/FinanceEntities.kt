@@ -6,7 +6,7 @@ import androidx.room.PrimaryKey
 
 enum class TransactionType { INCOME, EXPENSE, TRANSFER }
 enum class AccountType { CHECKING, SAVINGS, CREDIT_CARD, INVESTMENT, REAL_ESTATE, MORTGAGE }
-enum class RecurringFrequency { DAILY, WEEKLY, BIWEEKLY, MONTHLY }
+enum class RecurringFrequency { DAILY, WEEKLY, BIWEEKLY, MONTHLY, QUARTERLY, SEMI_ANNUAL, YEARLY }
 
 fun AccountType.isAsset() = this in listOf(AccountType.CHECKING, AccountType.SAVINGS, AccountType.INVESTMENT, AccountType.REAL_ESTATE)
 fun AccountType.isTransactionDriven() = this in listOf(AccountType.CHECKING, AccountType.SAVINGS, AccountType.CREDIT_CARD)
@@ -105,6 +105,29 @@ data class RecurringTransactionEntity(
     val createdAt: Long = System.currentTimeMillis()
 )
 
+@Entity(tableName = "lifeos_financetracker_sinking_funds")
+data class SinkingFundEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val name: String,
+    val targetAmountCents: Long,
+    val initialBalanceCents: Long = 0,
+    val targetDate: String,
+    val colorHex: String = "#66BB6A",
+    val accountId: Long? = null,
+    val categoryId: Long? = null,
+    val contributionDayOfMonth: Int? = null,
+    val isActive: Boolean = true,
+    val createdAt: Long = System.currentTimeMillis()
+)
+
+@Entity(tableName = "lifeos_financetracker_sinking_contributions")
+data class SinkingFundContributionEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val fundId: Long,
+    val amountCents: Long,
+    val date: String  // ISO "YYYY-MM-DD"
+)
+
 @Entity(
     tableName = "lifeos_financetracker_networth_history",
     indices = [Index(value = ["date"], unique = true)]
@@ -115,4 +138,13 @@ data class NetWorthSnapshotEntity(
     val totalAssets: Double,
     val totalLiabilities: Double,
     val netWorth: Double
+)
+
+@Entity(tableName = "lifeos_financetracker_personal_card_payments")
+data class PersonalCardPaymentEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val amountCents: Long,
+    val note: String = "",
+    val date: String,
+    val createdAt: Long = System.currentTimeMillis()
 )

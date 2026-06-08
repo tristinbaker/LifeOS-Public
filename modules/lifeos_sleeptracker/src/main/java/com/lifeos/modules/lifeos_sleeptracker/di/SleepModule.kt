@@ -5,8 +5,10 @@ import androidx.room.Room
 import com.lifeos.modules.lifeos_sleeptracker.data.local.SleepDatabase
 import com.lifeos.modules.lifeos_sleeptracker.data.local.SleepLogDao
 import com.lifeos.modules.lifeos_sleeptracker.data.local.SleepSettingsDao
+import com.lifeos.core.InsightProvider
 import com.lifeos.core.ReportDataProvider
 import com.lifeos.modules.lifeos_sleeptracker.data.repository.SleepRepository
+import com.lifeos.modules.lifeos_sleeptracker.report.SleepMedicationInsightProvider
 import com.lifeos.modules.lifeos_sleeptracker.report.SleepReportProvider
 import dagger.Module
 import dagger.Provides
@@ -46,4 +48,10 @@ object SleepModule {
     @Singleton
     fun provideSleepReportProvider(repository: SleepRepository): ReportDataProvider =
         SleepReportProvider(repository)
+
+    @Provides
+    @IntoSet
+    @Singleton
+    fun provideSleepMedicationInsightProvider(repository: SleepRepository): InsightProvider =
+        SleepMedicationInsightProvider(repository)
 }

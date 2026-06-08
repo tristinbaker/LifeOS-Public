@@ -1,0 +1,10 @@
+sdk.dir=/path/to/android-sdk
+
+# Groq API key — used by the AI Insights module
+# Get one at https://console.groq.com
+GROQ_API_KEY=your_groq_api_key_here
+
+# FatSecret API credentials — used by the Meal Tracker barcode/food lookup
+# Register at https://platform.fatsecret.com
+FATSECRET_CLIENT_ID=your_fatsecret_client_id_here
+FATSECRET_CLIENT_SECRET=your_fatsecret_client_secret_here

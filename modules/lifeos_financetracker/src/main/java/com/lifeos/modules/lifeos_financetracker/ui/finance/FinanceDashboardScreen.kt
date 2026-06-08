@@ -26,7 +26,9 @@ import com.lifeos.modules.lifeos_financetracker.data.local.*
 import com.lifeos.modules.lifeos_financetracker.data.repository.AccountWithBalance
 import com.lifeos.modules.lifeos_financetracker.data.repository.CategorySpending
 import com.lifeos.modules.lifeos_financetracker.ui.FinanceUiState
+import com.lifeos.modules.lifeos_financetracker.ui.SinkingFundProgress
 import java.text.NumberFormat
+import java.time.LocalDate
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -45,6 +47,8 @@ fun FinanceDashboardScreen(
     onPreviousMonth: () -> Unit,
     onNextMonth: () -> Unit,
     onTodayClick: () -> Unit,
+    onSinkingFundsClick: () -> Unit,
+    onPersonalCardClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val isCurrentMonth = uiState.selectedMonth == YearMonth.now()
@@ -141,9 +145,10 @@ fun FinanceDashboardScreen(
             item {
                 MonthlySummaryCard(
                     monthLabel = monthLabel,
-                    totalIncome = uiState.totalIncome,
+                    totalIncome = uiState.expectedMonthlyIncome,
                     totalExpenses = uiState.totalExpenses,
-                    netBalance = uiState.totalIncome - uiState.totalExpenses
+                    netBalance = uiState.expectedMonthlyIncome - uiState.totalExpenses,
+                    isIncomeProjected = uiState.expectedMonthlyIncome > uiState.totalIncome
                 )
             }
 
@@ -157,6 +162,55 @@ fun FinanceDashboardScreen(
                         }
                     }
                 }
+            }
+
+            // Sinking Funds section
+            if (uiState.sinkingFunds.isNotEmpty()) {
+                item {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("Sinking Funds", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+                        IconButton(onClick = onSinkingFundsClick, modifier = Modifier.size(36.dp)) {
+                            Icon(Icons.Default.ChevronRight, contentDescription = "Manage sinking funds")
+                        }
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        items(uiState.sinkingFunds, key = { it.fund.id }) { progress ->
+                            SinkingFundChip(progress = progress, onClick = onSinkingFundsClick)
+                        }
+                    }
+                }
+            } else {
+                item {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("Sinking Funds", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+                        IconButton(onClick = onSinkingFundsClick, modifier = Modifier.size(36.dp)) {
+                            Icon(Icons.Default.Add, contentDescription = "Add sinking fund")
+                        }
+                    }
+                    Text(
+                        "No sinking funds yet",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.outline,
+                        modifier = Modifier.padding(top = 4.dp)
+                    )
+                }
+            }
+
+            // Personal Card
+            item {
+                PersonalCardSummaryRow(
+                    balance = uiState.personalCardBalance,
+                    onClick = onPersonalCardClick
+                )
             }
 
             // Transactions with month navigation
@@ -201,14 +255,60 @@ fun FinanceDashboardScreen(
                     }
                 }
             } else {
-                items(uiState.monthlyTransactions, key = { it.id }) { tx ->
-                    val account = uiState.accounts.find { it.account.id == tx.accountId }?.account
-                    val category = uiState.categories.find { it.id == tx.categoryId }
-                    TransactionCard(transaction = tx, category = category, account = account, onClick = { onEditTransaction(tx.id) })
+                val groupedTx = uiState.monthlyTransactions.groupBy { it.date }
+                val sortedDates = groupedTx.keys.sortedDescending()
+                for (date in sortedDates) {
+                    item(key = "header_$date") {
+                        DateSeparatorHeader(date)
+                    }
+                    items(groupedTx[date]!!, key = { it.id }) { tx ->
+                        val account = uiState.accounts.find { it.account.id == tx.accountId }?.account
+                        val category = uiState.categories.find { it.id == tx.categoryId }
+                        TransactionCard(transaction = tx, category = category, account = account, onClick = { onEditTransaction(tx.id) })
+                    }
                 }
             }
 
             item { Spacer(Modifier.height(80.dp)) }
+        }
+    }
+
+}
+
+@Composable
+private fun SinkingFundChip(progress: SinkingFundProgress, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    val fundColor = parseColor(progress.fund.colorHex)
+    val isFunded = progress.currentSavedCents >= progress.fund.targetAmountCents
+    Card(
+        modifier = modifier.width(150.dp).clickable(onClick = onClick),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+    ) {
+        Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Box(modifier = Modifier.size(10.dp).clip(CircleShape).background(fundColor))
+                Text(progress.fund.name, style = MaterialTheme.typography.labelMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+            if (isFunded) {
+                Text("Funded!", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = Color(0xFF4CAF50))
+            } else {
+                Text(
+                    "${formatCurrency(progress.monthlyContributionCents / 100.0)}/mo",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = fundColor
+                )
+                LinearProgressIndicator(
+                    progress = { progress.progressFraction },
+                    modifier = Modifier.fillMaxWidth(),
+                    color = fundColor,
+                    trackColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
+                )
+                Text(
+                    "${formatCurrency(progress.currentSavedCents / 100.0)} / ${formatCurrency(progress.fund.targetAmountCents / 100.0)}",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.outline
+                )
+            }
         }
     }
 }
@@ -298,6 +398,7 @@ private fun MonthlySummaryCard(
     totalIncome: Double,
     totalExpenses: Double,
     netBalance: Double,
+    isIncomeProjected: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     Card(modifier = modifier.fillMaxWidth()) {
@@ -307,7 +408,12 @@ private fun MonthlySummaryCard(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceEvenly
             ) {
-                StatCell("Income", totalIncome, Color(0xFF4CAF50), Icons.AutoMirrored.Filled.TrendingUp)
+                StatCell(
+                    label = if (isIncomeProjected) "Expected" else "Income",
+                    amount = totalIncome,
+                    color = Color(0xFF4CAF50),
+                    icon = Icons.AutoMirrored.Filled.TrendingUp
+                )
                 VerticalDivider(modifier = Modifier.height(56.dp))
                 StatCell("Expenses", totalExpenses, MaterialTheme.colorScheme.error, Icons.AutoMirrored.Filled.TrendingDown)
                 VerticalDivider(modifier = Modifier.height(56.dp))
@@ -356,6 +462,27 @@ private fun CategorySpendingChip(spending: CategorySpending, modifier: Modifier 
                 Text("/ ${formatCurrency(spending.budgetLimitCents / 100.0)}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline)
             }
         }
+    }
+}
+
+@Composable
+internal fun DateSeparatorHeader(dateString: String, modifier: Modifier = Modifier) {
+    val today = LocalDate.now()
+    val date = try { LocalDate.parse(dateString) } catch (e: Exception) { null }
+    val label = when {
+        date == null -> dateString
+        date == today -> "Today"
+        date == today.minusDays(1) -> "Yesterday"
+        else -> date.format(DateTimeFormatter.ofPattern("EEEE, MMM d"))
+    }
+    Row(
+        modifier = modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        HorizontalDivider(modifier = Modifier.weight(1f), color = MaterialTheme.colorScheme.outlineVariant)
+        Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline)
+        HorizontalDivider(modifier = Modifier.weight(1f), color = MaterialTheme.colorScheme.outlineVariant)
     }
 }
 
@@ -421,6 +548,45 @@ internal fun TransactionCard(
                     color = MaterialTheme.colorScheme.outline
                 )
             }
+        }
+    }
+}
+
+@Composable
+private fun PersonalCardSummaryRow(balance: Double, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    val isOwed = balance > 0
+    val balanceColor = if (isOwed) MaterialTheme.colorScheme.error else Color(0xFF4CAF50)
+    Card(
+        modifier = modifier.fillMaxWidth().clickable(onClick = onClick),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Icon(
+                Icons.Default.CreditCard,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.outline,
+                modifier = Modifier.size(20.dp)
+            )
+            Column(modifier = Modifier.weight(1f)) {
+                Text("Personal Card", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
+                Text("Resale balance", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline)
+            }
+            Text(
+                formatCurrency(balance),
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = balanceColor
+            )
+            Icon(
+                Icons.Default.ChevronRight,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.outline,
+                modifier = Modifier.size(16.dp)
+            )
         }
     }
 }

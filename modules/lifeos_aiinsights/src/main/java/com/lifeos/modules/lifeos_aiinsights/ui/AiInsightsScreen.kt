@@ -1,8 +1,8 @@
 package com.lifeos.modules.lifeos_aiinsights.ui
 
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AutoAwesome
@@ -13,6 +13,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.lifeos.core.InsightProvider
 import com.lifeos.modules.lifeos_aiinsights.data.repository.ReportState
 import java.time.Instant
 import java.time.ZoneId
@@ -25,7 +26,8 @@ fun AiInsightsScreen(
     viewModel: AiInsightsViewModel,
     onNavigateBack: () -> Unit
 ) {
-    val uiState by viewModel.uiState.collectAsState()
+    val insightStates by viewModel.insightStates.collectAsState()
+    val providers = viewModel.insightProviders
 
     Scaffold(
         topBar = {
@@ -39,175 +41,128 @@ fun AiInsightsScreen(
             )
         }
     ) { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-        ) {
-            TabRow(selectedTabIndex = uiState.selectedTab.ordinal) {
-                Tab(
-                    selected = uiState.selectedTab == ReportTab.WEEKLY,
-                    onClick = { viewModel.selectTab(ReportTab.WEEKLY) },
-                    text = { Text("Weekly") }
-                )
-                Tab(
-                    selected = uiState.selectedTab == ReportTab.MONTHLY,
-                    onClick = { viewModel.selectTab(ReportTab.MONTHLY) },
-                    text = { Text("Monthly") }
-                )
-            }
-
-            val currentState = when (uiState.selectedTab) {
-                ReportTab.WEEKLY -> uiState.weeklyState
-                ReportTab.MONTHLY -> uiState.monthlyState
-            }
-            val onGenerate = when (uiState.selectedTab) {
-                ReportTab.WEEKLY -> viewModel::generateWeekly
-                ReportTab.MONTHLY -> viewModel::generateMonthly
-            }
-
-            when (currentState) {
-                is ReportState.Idle -> IdleContent(onGenerate = onGenerate)
-                is ReportState.Loading -> LoadingContent()
-                is ReportState.Loaded -> LoadedContent(
-                    content = currentState.content,
-                    generatedAt = currentState.generatedAt,
-                    onRefresh = onGenerate
-                )
-                is ReportState.Error -> ErrorContent(
-                    message = currentState.message,
-                    onRetry = onGenerate
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun IdleContent(onGenerate: () -> Unit) {
-    Box(
-        modifier = Modifier.fillMaxSize().padding(32.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            Icon(
-                Icons.Default.AutoAwesome,
-                contentDescription = null,
-                modifier = Modifier.size(56.dp),
-                tint = MaterialTheme.colorScheme.primary
-            )
-            Text(
-                "No report yet",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.SemiBold
-            )
-            Text(
-                "Generate a report to get AI-powered insights connecting your sleep, habits, nutrition, and finances.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.outline,
-                textAlign = androidx.compose.ui.text.style.TextAlign.Center
-            )
-            Button(onClick = onGenerate) {
-                Icon(Icons.Default.AutoAwesome, contentDescription = null, modifier = Modifier.size(18.dp))
-                Spacer(Modifier.width(8.dp))
-                Text("Generate Report")
-            }
-        }
-    }
-}
-
-@Composable
-private fun LoadingContent() {
-    Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
-    ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            CircularProgressIndicator()
-            Text(
-                "Analyzing your data…",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.outline
-            )
-        }
-    }
-}
-
-@Composable
-private fun LoadedContent(
-    content: String,
-    generatedAt: Long,
-    onRefresh: () -> Unit
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        Card(modifier = Modifier.fillMaxWidth()) {
-            Text(
-                text = content,
-                style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier.padding(16.dp),
-                lineHeight = MaterialTheme.typography.bodyMedium.lineHeight * 1.4f
-            )
-        }
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = "Generated ${formatAge(generatedAt)}",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.outline
-            )
-            OutlinedButton(
-                onClick = onRefresh,
-                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+        if (providers.isEmpty()) {
+            Box(
+                modifier = Modifier.fillMaxSize().padding(padding),
+                contentAlignment = Alignment.Center
             ) {
-                Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(16.dp))
-                Spacer(Modifier.width(4.dp))
-                Text("Refresh", style = MaterialTheme.typography.labelMedium)
+                Text(
+                    "No insights available.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.outline
+                )
+            }
+        } else {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize().padding(padding),
+                contentPadding = PaddingValues(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                items(providers, key = { it.insightId }) { provider ->
+                    val state = insightStates[provider.insightId] ?: ReportState.Idle
+                    InsightCard(
+                        provider = provider,
+                        state = state,
+                        onGenerate = { viewModel.generateInsight(provider.insightId) }
+                    )
+                }
+                item { Spacer(Modifier.height(80.dp)) }
             }
         }
-
-        Spacer(Modifier.height(80.dp))
     }
 }
 
 @Composable
-private fun ErrorContent(message: String, onRetry: () -> Unit) {
-    Box(
-        modifier = Modifier.fillMaxSize().padding(32.dp),
-        contentAlignment = Alignment.Center
-    ) {
+private fun InsightCard(
+    provider: InsightProvider,
+    state: ReportState,
+    onGenerate: () -> Unit
+) {
+    Card(modifier = Modifier.fillMaxWidth()) {
         Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Text(
-                "Something went wrong",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.error
-            )
-            Text(
-                message,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.outline,
-                textAlign = androidx.compose.ui.text.style.TextAlign.Center
-            )
-            TextButton(onClick = onRetry) { Text("Try Again") }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.Top
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = provider.cardTitle,
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Text(
+                        text = provider.cardQuestion,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.outline
+                    )
+                }
+                if (state is ReportState.Loaded) {
+                    IconButton(
+                        onClick = onGenerate,
+                        modifier = Modifier.size(36.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.Refresh,
+                            contentDescription = "Regenerate",
+                            modifier = Modifier.size(18.dp),
+                            tint = MaterialTheme.colorScheme.outline
+                        )
+                    }
+                }
+            }
+
+            when (state) {
+                is ReportState.Idle -> {
+                    Button(
+                        onClick = onGenerate,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(Icons.Default.AutoAwesome, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text("Generate")
+                    }
+                }
+                is ReportState.Loading -> {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                        Spacer(Modifier.width(10.dp))
+                        Text(
+                            "Analyzing…",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.outline
+                        )
+                    }
+                }
+                is ReportState.Loaded -> {
+                    HorizontalDivider()
+                    Text(
+                        text = state.content,
+                        style = MaterialTheme.typography.bodyMedium,
+                        lineHeight = MaterialTheme.typography.bodyMedium.lineHeight * 1.4f
+                    )
+                    Text(
+                        text = "Generated ${formatAge(state.generatedAt)}",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.outline
+                    )
+                }
+                is ReportState.Error -> {
+                    Text(
+                        text = state.message,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error
+                    )
+                    TextButton(onClick = onGenerate) { Text("Try Again") }
+                }
+            }
         }
     }
 }

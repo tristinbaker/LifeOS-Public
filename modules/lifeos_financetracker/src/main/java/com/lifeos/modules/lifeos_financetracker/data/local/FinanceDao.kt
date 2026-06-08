@@ -136,10 +136,67 @@ interface RecurringTransactionDao {
 }
 
 @Dao
+interface SinkingFundDao {
+    @Query("SELECT * FROM lifeos_financetracker_sinking_funds WHERE isActive = 1 ORDER BY targetDate ASC")
+    fun getAllActive(): Flow<List<SinkingFundEntity>>
+
+    @Query("SELECT * FROM lifeos_financetracker_sinking_funds WHERE isActive = 1 AND contributionDayOfMonth = :day")
+    suspend fun getDueToday(day: Int): List<SinkingFundEntity>
+
+    @Query("SELECT * FROM lifeos_financetracker_sinking_funds WHERE id = :id")
+    suspend fun getById(id: Long): SinkingFundEntity?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insert(entity: SinkingFundEntity): Long
+
+    @Update
+    suspend fun update(entity: SinkingFundEntity)
+
+    @Query("DELETE FROM lifeos_financetracker_sinking_funds WHERE id = :id")
+    suspend fun deleteById(id: Long)
+}
+
+@Dao
+interface SinkingFundContributionDao {
+    @Query("SELECT * FROM lifeos_financetracker_sinking_contributions WHERE fundId = :fundId ORDER BY date DESC")
+    fun getForFund(fundId: Long): Flow<List<SinkingFundContributionEntity>>
+
+    @Query("SELECT * FROM lifeos_financetracker_sinking_contributions ORDER BY date DESC")
+    fun getAll(): Flow<List<SinkingFundContributionEntity>>
+
+    @Query("SELECT * FROM lifeos_financetracker_sinking_contributions WHERE fundId = :fundId AND date LIKE :monthPrefix || '%'")
+    suspend fun getForFundInMonth(fundId: Long, monthPrefix: String): List<SinkingFundContributionEntity>
+
+    @Query("SELECT COALESCE(SUM(amountCents), 0) FROM lifeos_financetracker_sinking_contributions WHERE fundId = :fundId")
+    suspend fun getTotalContributedCents(fundId: Long): Long
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insert(entity: SinkingFundContributionEntity): Long
+
+    @Query("DELETE FROM lifeos_financetracker_sinking_contributions WHERE id = :id")
+    suspend fun deleteById(id: Long)
+
+    @Query("DELETE FROM lifeos_financetracker_sinking_contributions WHERE fundId = :fundId")
+    suspend fun deleteAllForFund(fundId: Long)
+}
+
+@Dao
 interface NetWorthHistoryDao {
     @Query("SELECT * FROM lifeos_financetracker_networth_history ORDER BY date ASC LIMIT :limit")
     fun getRecentHistory(limit: Int = 90): Flow<List<NetWorthSnapshotEntity>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsert(snapshot: NetWorthSnapshotEntity)
+}
+
+@Dao
+interface PersonalCardPaymentDao {
+    @Query("SELECT * FROM lifeos_financetracker_personal_card_payments ORDER BY date DESC, createdAt DESC")
+    fun getAll(): Flow<List<PersonalCardPaymentEntity>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insert(payment: PersonalCardPaymentEntity): Long
+
+    @Query("DELETE FROM lifeos_financetracker_personal_card_payments WHERE id = :id")
+    suspend fun deleteById(id: Long)
 }

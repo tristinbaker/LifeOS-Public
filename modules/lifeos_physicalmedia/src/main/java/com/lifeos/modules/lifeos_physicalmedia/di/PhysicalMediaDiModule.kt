@@ -2,12 +2,15 @@ package com.lifeos.modules.lifeos_physicalmedia.di
 
 import android.content.Context
 import androidx.room.Room
+import com.lifeos.core.InsightProvider
 import com.lifeos.modules.lifeos_physicalmedia.data.local.*
+import com.lifeos.modules.lifeos_physicalmedia.report.CollectionPickInsightProvider
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
+import dagger.multibindings.IntoSet
 import javax.inject.Singleton
 
 @Module
@@ -41,4 +44,12 @@ object PhysicalMediaDiModule {
 
     @Provides
     fun providePhysicalTvSeriesDao(db: PhysicalMediaDatabase): PhysicalTvSeriesDao = db.physicalTvSeriesDao()
+
+    @Provides
+    @IntoSet
+    @Singleton
+    fun provideCollectionPickInsightProvider(
+        movieDao: PhysicalMovieDao,
+        tvSeriesDao: PhysicalTvSeriesDao
+    ): InsightProvider = CollectionPickInsightProvider(movieDao, tvSeriesDao)
 }

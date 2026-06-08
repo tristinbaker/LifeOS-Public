@@ -78,6 +78,9 @@ class HabitsModule : LifeOSModule {
                         onToggleCheckIn = { habitId ->
                             viewModel.toggleCheckIn(habitId)
                         },
+                        onToggleCheckInForDate = { habitId, date ->
+                            viewModel.toggleCheckInForDate(habitId, date)
+                        },
                         onHabitClick = { habitId ->
                             moduleNavController.navigate("edit/$habitId")
                         },

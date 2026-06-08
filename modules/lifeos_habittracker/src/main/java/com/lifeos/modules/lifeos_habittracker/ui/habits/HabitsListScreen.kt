@@ -1,6 +1,8 @@
 package com.lifeos.modules.lifeos_habittracker.ui.habits
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -12,9 +14,7 @@ import androidx.compose.material.icons.filled.LocalFireDepartment
 import androidx.compose.material.icons.filled.RadioButtonUnchecked
 import androidx.compose.material.icons.filled.Timeline
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -24,12 +24,15 @@ import com.lifeos.modules.lifeos_habittracker.data.local.HabitFrequency
 import com.lifeos.modules.lifeos_habittracker.ui.HabitWithStats
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
+import java.time.format.TextStyle
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HabitsListScreen(
     habitsWithStats: List<HabitWithStats>,
     onToggleCheckIn: (Long) -> Unit,
+    onToggleCheckInForDate: (Long, LocalDate) -> Unit,
     onHabitClick: (Long) -> Unit,
     onAddClick: () -> Unit,
     modifier: Modifier = Modifier
@@ -76,6 +79,7 @@ fun HabitsListScreen(
                     HabitCard(
                         habitStats = habitStats,
                         onToggle = { onToggleCheckIn(habitStats.habit.id) },
+                        onToggleDate = { date -> onToggleCheckInForDate(habitStats.habit.id, date) },
                         onClick = { onHabitClick(habitStats.habit.id) }
                     )
                 }
@@ -84,16 +88,23 @@ fun HabitsListScreen(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
 private fun HabitCard(
     habitStats: HabitWithStats,
     onToggle: () -> Unit,
+    onToggleDate: (LocalDate) -> Unit,
     onClick: () -> Unit
 ) {
+    var showBacklog by remember { mutableStateOf(false) }
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onClick() },
+            .combinedClickable(
+                onClick = { onClick() },
+                onLongClick = { showBacklog = true }
+            ),
         shape = RoundedCornerShape(16.dp)
     ) {
         Row(
@@ -107,14 +118,14 @@ private fun HabitCard(
                 modifier = Modifier.size(48.dp)
             ) {
                 Icon(
-                    imageVector = if (habitStats.isCheckedInToday) 
-                        Icons.Filled.CheckCircle 
-                    else 
+                    imageVector = if (habitStats.isCheckedInToday)
+                        Icons.Filled.CheckCircle
+                    else
                         Icons.Filled.RadioButtonUnchecked,
                     contentDescription = if (habitStats.isCheckedInToday) "Checked in" else "Not checked in",
-                    tint = if (habitStats.isCheckedInToday) 
-                        MaterialTheme.colorScheme.primary 
-                    else 
+                    tint = if (habitStats.isCheckedInToday)
+                        MaterialTheme.colorScheme.primary
+                    else
                         MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.size(32.dp)
                 )
@@ -156,9 +167,9 @@ private fun HabitCard(
                     Icon(
                         Icons.Default.LocalFireDepartment,
                         contentDescription = null,
-                        tint = if (habitStats.streak > 0) 
-                            MaterialTheme.colorScheme.primary 
-                        else 
+                        tint = if (habitStats.streak > 0)
+                            MaterialTheme.colorScheme.primary
+                        else
                             MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
                         modifier = Modifier.size(16.dp)
                     )
@@ -166,9 +177,9 @@ private fun HabitCard(
                     Text(
                         text = "${habitStats.streak}",
                         style = MaterialTheme.typography.labelLarge,
-                        color = if (habitStats.streak > 0) 
-                            MaterialTheme.colorScheme.primary 
-                        else 
+                        color = if (habitStats.streak > 0)
+                            MaterialTheme.colorScheme.primary
+                        else
                             MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
                     )
                 }
@@ -193,6 +204,101 @@ private fun HabitCard(
                 }
             }
         }
+    }
+
+    if (showBacklog) {
+        BacklogBottomSheet(
+            habitStats = habitStats,
+            onDismiss = { showBacklog = false },
+            onToggleDate = onToggleDate
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun BacklogBottomSheet(
+    habitStats: HabitWithStats,
+    onDismiss: () -> Unit,
+    onToggleDate: (LocalDate) -> Unit
+) {
+    val today = LocalDate.now()
+    val days = (6 downTo 0).map { today.minusDays(it.toLong()) }
+
+    ModalBottomSheet(onDismissRequest = onDismiss) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp)
+                .padding(bottom = 36.dp)
+        ) {
+            Text(
+                text = habitStats.habit.name,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold
+            )
+            Text(
+                text = "Long-press any day to log it",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(modifier = Modifier.height(20.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly
+            ) {
+                days.forEach { date ->
+                    val dateStr = date.format(DateTimeFormatter.ISO_LOCAL_DATE)
+                    val isChecked = dateStr in habitStats.recentCheckInDates
+                    DayCell(
+                        date = date,
+                        isChecked = isChecked,
+                        isToday = date == today,
+                        onClick = { onToggleDate(date) }
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DayCell(
+    date: LocalDate,
+    isChecked: Boolean,
+    isToday: Boolean,
+    onClick: () -> Unit
+) {
+    val dayLabel = date.dayOfWeek.getDisplayName(TextStyle.SHORT, Locale.getDefault()).take(2)
+    val primary = MaterialTheme.colorScheme.primary
+    val onSurface = MaterialTheme.colorScheme.onSurface
+    val muted = MaterialTheme.colorScheme.onSurfaceVariant
+
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier
+            .clip(RoundedCornerShape(10.dp))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 6.dp, vertical = 8.dp)
+    ) {
+        Text(
+            text = dayLabel,
+            style = MaterialTheme.typography.labelSmall,
+            color = if (isToday) primary else muted
+        )
+        Text(
+            text = "${date.dayOfMonth}",
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = if (isToday) FontWeight.Bold else FontWeight.Normal,
+            color = if (isToday) primary else onSurface
+        )
+        Spacer(modifier = Modifier.height(6.dp))
+        Icon(
+            imageVector = if (isChecked) Icons.Filled.CheckCircle else Icons.Filled.RadioButtonUnchecked,
+            contentDescription = if (isChecked) "Checked" else "Not checked",
+            tint = if (isChecked) primary else muted.copy(alpha = 0.4f),
+            modifier = Modifier.size(28.dp)
+        )
     }
 }
 

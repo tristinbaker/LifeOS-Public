@@ -38,7 +38,7 @@ class HabitsRepository @Inject constructor(
     suspend fun toggleCheckIn(habitId: Long): Boolean {
         val today = LocalDate.now().format(dateFormatter)
         val existing = habitDao.getCheckInForDate(habitId, today)
-        
+
         return if (existing != null) {
             habitDao.deleteCheckIn(existing)
             false
@@ -46,6 +46,28 @@ class HabitsRepository @Inject constructor(
             habitDao.insertCheckIn(HabitCheckIn(habitId = habitId, date = today))
             true
         }
+    }
+
+    suspend fun toggleCheckInForDate(habitId: Long, date: LocalDate): Boolean {
+        val dateStr = date.format(dateFormatter)
+        val existing = habitDao.getCheckInForDate(habitId, dateStr)
+        return if (existing != null) {
+            habitDao.deleteCheckIn(existing)
+            false
+        } else {
+            habitDao.insertCheckIn(HabitCheckIn(habitId = habitId, date = dateStr))
+            true
+        }
+    }
+
+    suspend fun getRecentCheckInDates(habitId: Long, days: Int): Set<String> {
+        val endDate = LocalDate.now()
+        val startDate = endDate.minusDays(days.toLong() - 1)
+        return habitDao.getCheckInsBetween(
+            habitId,
+            startDate.format(dateFormatter),
+            endDate.format(dateFormatter)
+        ).map { it.date }.toSet()
     }
 
     suspend fun getCheckInCount(habitId: Long): Int = habitDao.getCheckInCount(habitId)

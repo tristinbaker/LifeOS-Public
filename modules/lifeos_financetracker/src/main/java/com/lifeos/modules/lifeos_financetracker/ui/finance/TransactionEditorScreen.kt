@@ -154,7 +154,7 @@ fun TransactionEditorScreen(
                         value = accounts.find { it.account.id == selectedToAccountId }?.account?.name ?: "",
                         onValueChange = {},
                         readOnly = true,
-                        label = { Text("To Account (paying off)") },
+                        label = { Text("To Account") },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = toAccountMenuExpanded) },
                         interactionSource = toAccountSource,
                         modifier = Modifier.menuAnchor().fillMaxWidth()

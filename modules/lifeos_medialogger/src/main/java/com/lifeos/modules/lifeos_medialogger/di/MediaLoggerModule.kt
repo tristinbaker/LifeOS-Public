@@ -2,12 +2,15 @@ package com.lifeos.modules.lifeos_medialogger.di
 
 import android.content.Context
 import androidx.room.Room
+import com.lifeos.core.InsightProvider
 import com.lifeos.modules.lifeos_medialogger.data.local.*
+import com.lifeos.modules.lifeos_medialogger.report.MediaRecommendationInsightProvider
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
+import dagger.multibindings.IntoSet
 import javax.inject.Singleton
 
 @Module
@@ -32,4 +35,10 @@ object MediaLoggerModule {
 
     @Provides
     fun provideMangaVolumeDao(database: MediaLoggerDatabase): MangaVolumeDao = database.mangaVolumeDao()
+
+    @Provides
+    @IntoSet
+    @Singleton
+    fun provideMediaRecommendationInsightProvider(mediaItemDao: MediaItemDao): InsightProvider =
+        MediaRecommendationInsightProvider(mediaItemDao)
 }

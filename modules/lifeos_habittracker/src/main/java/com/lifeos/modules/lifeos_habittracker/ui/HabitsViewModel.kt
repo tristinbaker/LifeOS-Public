@@ -9,6 +9,7 @@ import com.lifeos.modules.lifeos_habittracker.notification.HabitReminderSchedule
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import java.time.LocalDate
 import javax.inject.Inject
 
 data class HabitWithStats(
@@ -16,7 +17,8 @@ data class HabitWithStats(
     val isCheckedInToday: Boolean,
     val streak: Int,
     val totalCheckIns: Int,
-    val daysSinceStart: Int
+    val daysSinceStart: Int,
+    val recentCheckInDates: Set<String> = emptySet()
 )
 
 @HiltViewModel
@@ -41,7 +43,8 @@ class HabitsViewModel @Inject constructor(
                         isCheckedInToday = repository.isCheckedInToday(habit.id),
                         streak = repository.getStreak(habit.id),
                         totalCheckIns = repository.getCheckInCount(habit.id),
-                        daysSinceStart = repository.daysSinceStart(habit)
+                        daysSinceStart = repository.daysSinceStart(habit),
+                        recentCheckInDates = repository.getRecentCheckInDates(habit.id, 7)
                     )
                 }
                 _habitsWithStats.value = stats
@@ -52,6 +55,13 @@ class HabitsViewModel @Inject constructor(
     fun toggleCheckIn(habitId: Long) {
         viewModelScope.launch {
             repository.toggleCheckIn(habitId)
+            loadHabits()
+        }
+    }
+
+    fun toggleCheckInForDate(habitId: Long, date: LocalDate) {
+        viewModelScope.launch {
+            repository.toggleCheckInForDate(habitId, date)
             loadHabits()
         }
     }

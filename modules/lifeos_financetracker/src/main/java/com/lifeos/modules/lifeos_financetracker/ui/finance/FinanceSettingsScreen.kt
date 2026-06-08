@@ -290,7 +290,7 @@ private fun AddCategoryDialog(
 }
 
 @Composable
-private fun ColorPicker(
+internal fun ColorPicker(
     selectedColor: String,
     onColorSelected: (String) -> Unit,
     modifier: Modifier = Modifier

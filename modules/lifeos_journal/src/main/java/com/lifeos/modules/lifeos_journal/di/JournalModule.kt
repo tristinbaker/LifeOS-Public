@@ -2,16 +2,19 @@ package com.lifeos.modules.lifeos_journal.di
 
 import android.content.Context
 import androidx.room.Room
+import com.lifeos.core.InsightProvider
 import com.lifeos.modules.lifeos_journal.data.local.JournalDatabase
 import com.lifeos.modules.lifeos_journal.data.local.JournalEntryDao
 import com.lifeos.modules.lifeos_journal.data.local.JournalImageDao
 import com.lifeos.modules.lifeos_journal.data.local.JournalSettingsDao
 import com.lifeos.modules.lifeos_journal.data.local.JOURNAL_MIGRATION_1_2
+import com.lifeos.modules.lifeos_journal.report.MoodJournalInsightProvider
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
+import dagger.multibindings.IntoSet
 import javax.inject.Singleton
 
 @Module
@@ -46,4 +49,10 @@ object JournalModule {
     fun provideJournalImageDao(database: JournalDatabase): JournalImageDao {
         return database.journalImageDao()
     }
+
+    @Provides
+    @IntoSet
+    @Singleton
+    fun provideMoodJournalInsightProvider(journalEntryDao: JournalEntryDao): InsightProvider =
+        MoodJournalInsightProvider(journalEntryDao)
 }

@@ -35,7 +35,10 @@ class FinanceRepository @Inject constructor(
     private val accountSnapshotDao: AccountSnapshotDao,
     private val mortgageDetailsDao: MortgageDetailsDao,
     private val recurringTransactionDao: RecurringTransactionDao,
-    private val netWorthHistoryDao: NetWorthHistoryDao
+    private val netWorthHistoryDao: NetWorthHistoryDao,
+    private val sinkingFundDao: SinkingFundDao,
+    private val sinkingFundContributionDao: SinkingFundContributionDao,
+    private val personalCardPaymentDao: PersonalCardPaymentDao
 ) {
     private val dateFormatter = DateTimeFormatter.ISO_LOCAL_DATE
     private val seedScope = CoroutineScope(Dispatchers.IO)
@@ -46,9 +49,17 @@ class FinanceRepository @Inject constructor(
 
     // ---- Balance computation helpers ----
 
-    fun computeTransactionBalance(account: AccountEntity, allTxns: List<TransactionEntity>): Double {
-        var balance = account.startingBalance
-        allTxns.filter { it.accountId == account.id || it.toAccountId == account.id }.forEach { tx ->
+    fun computeTransactionBalance(
+        account: AccountEntity,
+        allTxns: List<TransactionEntity>,
+        startBalance: Double = account.startingBalance,
+        afterDate: String? = null
+    ): Double {
+        var balance = startBalance
+        allTxns.filter {
+            (it.accountId == account.id || it.toAccountId == account.id) &&
+            (afterDate == null || it.date > afterDate)
+        }.forEach { tx ->
             when {
                 tx.accountId == account.id -> when (tx.type) {
                     TransactionType.INCOME -> if (account.type.isAsset()) balance += tx.amount else balance -= tx.amount
@@ -56,7 +67,7 @@ class FinanceRepository @Inject constructor(
                     TransactionType.TRANSFER -> balance -= tx.amount
                 }
                 tx.toAccountId == account.id && tx.type == TransactionType.TRANSFER ->
-                    balance -= tx.amount
+                    if (account.type.isAsset()) balance += tx.amount else balance -= tx.amount
             }
         }
         return balance
@@ -192,6 +203,37 @@ class FinanceRepository @Inject constructor(
         )
     }
 
+    // ---- Sinking funds ----
+
+    fun getAllSinkingFunds(): Flow<List<SinkingFundEntity>> = sinkingFundDao.getAllActive()
+
+    suspend fun getSinkingFundById(id: Long): SinkingFundEntity? = sinkingFundDao.getById(id)
+    suspend fun insertSinkingFund(entity: SinkingFundEntity): Long = sinkingFundDao.insert(entity)
+    suspend fun updateSinkingFund(entity: SinkingFundEntity) = sinkingFundDao.update(entity)
+    suspend fun deleteSinkingFund(id: Long) {
+        sinkingFundContributionDao.deleteAllForFund(id)
+        sinkingFundDao.deleteById(id)
+    }
+
+    fun getAllContributions(): Flow<List<SinkingFundContributionEntity>> =
+        sinkingFundContributionDao.getAll()
+
+    fun getContributionsForFund(fundId: Long): Flow<List<SinkingFundContributionEntity>> =
+        sinkingFundContributionDao.getForFund(fundId)
+
+    suspend fun insertContribution(entity: SinkingFundContributionEntity): Long =
+        sinkingFundContributionDao.insert(entity)
+
+    suspend fun deleteContribution(id: Long) = sinkingFundContributionDao.deleteById(id)
+
+    // ---- Personal card payments ----
+
+    fun getPersonalCardPayments(): Flow<List<PersonalCardPaymentEntity>> = personalCardPaymentDao.getAll()
+
+    suspend fun insertPersonalCardPayment(payment: PersonalCardPaymentEntity): Long = personalCardPaymentDao.insert(payment)
+
+    suspend fun deletePersonalCardPayment(id: Long) = personalCardPaymentDao.deleteById(id)
+
     // ---- Category seeding ----
 
     private suspend fun seedDefaultCategoriesIfEmpty() {
@@ -212,6 +254,7 @@ class FinanceRepository @Inject constructor(
         CategoryEntity(name = "Salary",           iconName = "work",               colorHex = "#66BB6A", isDefault = true, sortOrder = 9),
         CategoryEntity(name = "Freelance",        iconName = "laptop",             colorHex = "#42A5F5", isDefault = true, sortOrder = 10),
         CategoryEntity(name = "Investment",       iconName = "trending_up",        colorHex = "#FFCA28", isDefault = true, sortOrder = 11),
-        CategoryEntity(name = "Other Income",     iconName = "attach_money",       colorHex = "#26C6DA", isDefault = true, sortOrder = 12)
+        CategoryEntity(name = "Other Income",     iconName = "attach_money",       colorHex = "#26C6DA", isDefault = true, sortOrder = 12),
+        CategoryEntity(name = "Personal",         iconName = "person",             colorHex = "#E91E63", isDefault = true, sortOrder = 13)
     )
 }
