@@ -23,7 +23,16 @@ The app is local-first. All data lives on your device in per-module Room databas
 
 ## Screenshots
 
-_Coming soon._
+<p align="center">
+  <img src="screenshots/meal_tracker.png" width="180" />
+  <img src="screenshots/habit_tracker.png" width="180" />
+  <img src="screenshots/notes.png" width="180" />
+  <img src="screenshots/sleep_tracker.png" width="180" />
+  <img src="screenshots/media_logger.png" width="180" />
+  <img src="screenshots/sports.png" width="180" />
+  <img src="screenshots/collection_tracker.png" width="180" />
+  <img src="screenshots/collection_tracker_2.png" width="180" />
+</p>
 
 ---
 
@@ -157,11 +166,15 @@ The AI Insights module sends structured prompts to the Groq chat completions end
 
 ### Meal Tracker
 
+<img src="screenshots/meal_tracker.png" width="260" align="right" />
+
 Logs meals with calories, protein, carbohydrates, and fat. Meals can be entered manually, selected from saved meals or stored food items, or looked up by scanning a product barcode with the camera. The barcode flow uses CameraX and ML Kit to decode the barcode then queries FatSecret for nutrition data.
 
 Weight entries are tracked separately and appear in the dashboard alongside calorie totals. A trend chart shows calorie intake over the past weeks using Vico.
 
 ### Habit Tracker
+
+<img src="screenshots/habit_tracker.png" width="260" align="right" />
 
 Habits are created with a name, frequency (daily, specific days of the week, or a custom interval), and an optional reminder time. WorkManager schedules a periodic notification worker that fires at the configured time and posts a reminder notification. Check-ins are stored per day and the module calculates current streaks and completion rates.
 
@@ -171,13 +184,19 @@ Each journal entry has a date, text content, a mood value, and any number of att
 
 ### Notes
 
+<img src="screenshots/notes.png" width="260" align="right" />
+
 Notes support both plain text and checklist mode. In checklist mode the content is serialized as JSON and rendered as a list of checkable items. Notes can be pinned to appear at the top of the list. Each note can have a scheduled reminder that posts a notification at a chosen time.
 
 ### Sleep Tracker
 
+<img src="screenshots/sleep_tracker.png" width="260" align="right" />
+
 Sleep sessions record a start time, end time, quality rating, optional notes, optional dream notes, and whether sleep medication was taken. The stats card on the list screen shows weekly averages for sleep duration and quality, calculated using circular mean arithmetic for time values so that times wrapping around midnight are handled correctly.
 
 ### Media Logger
+
+<img src="screenshots/media_logger.png" width="260" align="right" />
 
 Tracks four media types:
 
@@ -190,6 +209,8 @@ A stats screen breaks down counts, average ratings, and rating distributions by 
 
 ### Sports
 
+<img src="screenshots/sports.png" width="260" align="right" />
+
 Supports NFL, NBA, MLB, NHL, and MLS. Each league shows a scores tab with current or recent game results, a standings tab with full table data, and a schedule tab for upcoming games. A last game screen shows detailed recap information for a selected team.
 
 Favorite teams are stored locally. WorkManager schedules a daily job that checks for upcoming games and schedules a notification for game start time.
@@ -197,6 +218,9 @@ Favorite teams are stored locally. WorkManager schedules a daily job that checks
 ESPN API responses are cached in a Room database to limit redundant network calls. The cache handles oversized responses that would exceed SQLite cursor limits.
 
 ### Physical Media
+
+<img src="screenshots/collection_tracker.png" width="260" align="right" />
+<img src="screenshots/collection_tracker_2.png" width="260" align="right" />
 
 Tracks the physical versions of media you own rather than what you have watched or read. Supports:
 
